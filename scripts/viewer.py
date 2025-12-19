@@ -223,6 +223,17 @@ class DualPaneMeshViewer:
         self.window.add_child(self.panel)
         self.window.add_child(self.scene_widget_left)
         self.window.add_child(self.scene_widget_right)
+
+        # Info overlay at bottom of window
+        self.info_overlay = gui.Horiz()
+        self.info_overlay.add_child(self.method_label)
+        self.info_overlay.add_child(gui.Label("  "))
+        self.info_overlay.add_child(self.format_label)
+        self.info_overlay.add_child(gui.Label("  "))
+        self.info_overlay.add_child(self.vertices_label)
+        self.info_overlay.add_child(gui.Label("  "))
+        self.info_overlay.add_child(self.triangles_label)
+        self.window.add_child(self.info_overlay)
         
         # Setup scenes
         self._setup_scenes()
@@ -448,7 +459,7 @@ class DualPaneMeshViewer:
         info_layout.add_child(gui.Label("  "))
         self.triangles_label = gui.Label("Triangles: --")
         info_layout.add_child(self.triangles_label)
-        self.panel.add_child(info_layout)
+        # self.panel.add_child(info_layout)
 
         # Export Mesh button
         self.export_button = gui.Button("Export Mesh")
@@ -480,6 +491,10 @@ class DualPaneMeshViewer:
         
         # Right scene (mesh)
         self.scene_widget_right.frame = gui.Rect(scene_x + scene_width, r.y, scene_width, r.height)
+
+        # Info overlay at bottom
+        info_height = 30
+        self.info_overlay.frame = gui.Rect(panel_width, r.height - info_height, r.width - panel_width, info_height)
     
     def _setup_scenes(self):
         """Setup the 3D scenes for point cloud and mesh."""
