@@ -1,0 +1,587 @@
+#!/usr/bin/env python3
+"""
+Point Cloud to Mesh Converter using Open3D
+
+This script converts point cloud files (PLY format) to mesh files using various
+meshing algorithms including Poisson surface reconstruction, Ball Pivoting, and Alpha shapes.
+
+Usage:
+    python mesher.py --input_file <path> --output_filename <path> --output_format <format> --meshing_method <method>
+
+Example:
+    python mesher.py --input_file chiller.ply --output_filename mesh.obj --output_format obj --meshing_method poisson
+"""
+
+import argparse
+import sys
+import os
+import numpy as np
+import open3d as o3d
+
+
+def convert_sh_to_rgb(pcd, input_file):
+    """Convert Gaussian Splatting SH coefficients to RGB colors if present."""
+    if pcd.has_colors():
+        return pcd  # Already has colors
+    
+    try:
+        from plyfile import PlyData
+        plydata = PlyData.read(input_file)
+        vertex = plydata['vertex']
+        
+        if 'f_dc_0' in vertex.data.dtype.names:
+            print("✓ Found Gaussian Splatting SH coefficients, converting to RGB...")
+            sh_dc_0 = vertex['f_dc_0']
+            sh_dc_1 = vertex['f_dc_1']
+            sh_dc_2 = vertex['f_dc_2']
+            
+            # Convert SH to RGB
+            SH_C0 = 0.28209479177387814
+            rgb = np.stack([sh_dc_0, sh_dc_1, sh_dc_2], axis=1)
+            rgb = 0.5 + SH_C0 * rgb
+            rgb = np.clip(rgb, 0.0, 1.0)
+            
+            pcd.colors = o3d.utility.Vector3dVector(rgb)
+            print(f"✓ Converted {len(pcd.points)} points to RGB")
+    except ImportError:
+        pass  # plyfile not installed
+    except Exception:
+        pass  # Could not convert
+    
+    return pcd
+
+
+def load_point_cloud(input_file):
+    """Load a point cloud from a PLY file."""
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file not found: {input_file}")
+    
+    print(f"Loading point cloud from: {input_file}")
+    pcd = o3d.io.read_point_cloud(input_file)
+    
+    if not pcd.has_points():
+        raise ValueError("Point cloud is empty or invalid")
+    # Auto-convert Gaussian Splatting SH coefficients to RGB
+    pcd = convert_sh_to_rgb(pcd, input_file)
+    
+    print(f"Loaded {len(pcd.points)} points")
+    return pcd
+
+
+def estimate_normals(pcd):
+    """Estimate normals for the point cloud if not already present."""
+    if not pcd.has_normals():
+        print("Estimating normals...")
+        pcd.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+        )
+        # Orient normals consistently
+        pcd.orient_normals_consistent_tangent_plane(k=15)
+        print("Normals estimated and oriented")
+    else:
+        print("Point cloud already has normals")
+    return pcd
+
+
+def poisson_reconstruction(pcd):
+    """Generate mesh using Poisson surface reconstruction."""
+    print("Performing Poisson surface reconstruction...")
+    
+    # Force re-estimation of normals (original file has zero-value normals)
+    print("Re-estimating normals for better Poisson reconstruction...")
+    pcd.normals = o3d.utility.Vector3dVector([])
+    pcd.estimate_normals(
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=50)
+    )
+    pcd.orient_normals_consistent_tangent_plane(k=30)
+    
+    # Perform Poisson reconstruction with optimized parameters
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+        pcd, 
+        depth=8,  # Lower depth for more tolerance with noisy data
+        width=0,
+        scale=1.1,
+        linear_fit=True
+    )
+    
+    print(f"Generated mesh with {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
+    
+    # Crop to point cloud bounding box to remove ground plane and other artifacts
+    bbox = pcd.get_axis_aligned_bounding_box()
+    mesh = mesh.crop(bbox)
+    print(f"After bounding box crop: {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
+    
+    # NOTE: Density cleanup removed to preserve watertight mesh
+    # The raw Poisson output is watertight; cleanup creates holes
+    print(f"Mesh is watertight: {mesh.is_watertight()}")
+    
+    return mesh
+
+
+def ball_pivoting_reconstruction(pcd):
+    """Generate mesh using Ball Pivoting algorithm."""
+    print("Performing Ball Pivoting reconstruction...")
+    
+    # Ensure normals are estimated
+    pcd = estimate_normals(pcd)
+    
+    # Estimate point cloud spacing
+    distances = pcd.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    
+    # Define ball radii (multiple radii for better coverage)
+    radii = [avg_dist * multiplier for multiplier in [1.0, 2.0, 4.0]]
+    print(f"Using ball radii: {radii}")
+    
+    # Perform Ball Pivoting
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+        pcd, o3d.utility.DoubleVector(radii)
+    )
+    
+    # Transfer colors from point cloud to mesh if available
+    if pcd.has_colors() and len(mesh.vertices) > 0:
+        # BPA preserves vertex positions, so we can directly copy colors
+        mesh.vertex_colors = pcd.colors
+        print(f"Transferred vertex colors from point cloud to mesh")
+    
+    print(f"Generated mesh with {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
+    return mesh
+
+
+def alpha_shape_reconstruction(pcd):
+    """Generate mesh using Alpha shapes."""
+    print("Performing Alpha shape reconstruction...")
+    
+    # Estimate optimal alpha value
+    distances = pcd.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    alpha = avg_dist * 2.0
+    
+    print(f"Using alpha value: {alpha}")
+    
+    # Create alpha shape mesh
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
+    
+    # Transfer colors from point cloud to mesh if available
+    if pcd.has_colors() and len(mesh.vertices) > 0:
+        # Alpha shapes creates a subset of points, need to find corresponding colors
+        pcd_tree = o3d.geometry.KDTreeFlann(pcd)
+        colors = []
+        for vertex in mesh.vertices:
+            # Find nearest point in original point cloud
+            [_, idx, _] = pcd_tree.search_knn_vector_3d(vertex, 1)
+            colors.append(pcd.colors[idx[0]])
+        mesh.vertex_colors = o3d.utility.Vector3dVector(np.array(colors))
+        print(f"Transferred vertex colors from point cloud to mesh")
+    
+    print(f"Generated mesh with {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
+    return mesh
+
+
+def generate_mesh(pcd, method):
+    """Generate mesh using the specified method."""
+    if method == "poisson":
+        return poisson_reconstruction(pcd)
+    elif method == "bpa":
+        return ball_pivoting_reconstruction(pcd)
+    elif method == "alpha":
+        return alpha_shape_reconstruction(pcd)
+    else:
+        raise ValueError(f"Unknown meshing method: {method}")
+
+
+def adaptive_simplify(mesh, target_triangles, curvature_threshold=0.1):
+    """Simplify mesh adaptively based on curvature - preserves detail in complex areas."""
+    print(f"Adaptive simplification to {target_triangles} triangles (threshold: {curvature_threshold})...")
+    
+    # Compute vertex normals for curvature estimation
+    mesh.compute_vertex_normals()
+    
+    # Estimate curvature using normal variation
+    vertices = np.asarray(mesh.vertices)
+    normals = np.asarray(mesh.vertex_normals)
+    triangles = np.asarray(mesh.triangles)
+    
+    # Calculate curvature as variation in normals at each vertex
+    curvatures = np.zeros(len(vertices))
+    for i, tri in enumerate(triangles):
+        # Get normals of triangle vertices
+        n0, n1, n2 = normals[tri[0]], normals[tri[1]], normals[tri[2]]
+        # Calculate normal variation (higher = more curvature)
+        variation = np.linalg.norm(n0 - n1) + np.linalg.norm(n1 - n2) + np.linalg.norm(n2 - n0)
+        # Accumulate to vertices
+        for v_idx in tri:
+            curvatures[v_idx] += variation
+    
+    # Normalize curvatures
+    if curvatures.max() > 0:
+        curvatures = curvatures / curvatures.max()
+    
+    # High curvature areas get preserved more
+    # Use quadric decimation with boundary weight influenced by curvature
+    # Note: Open3D doesn't support per-vertex weights directly, so we use a heuristic
+    mesh = mesh.simplify_quadric_decimation(
+        target_number_of_triangles=target_triangles,
+        maximum_error=np.inf,
+        boundary_weight=1.0  # Preserve boundaries
+    )
+    
+    print(f"  Adaptive simplification complete: {len(mesh.triangles)} triangles")
+    return mesh
+
+
+def generate_texture(mesh, pcd, uv_method="simple", texture_size=2048):
+    """Generate texture from vertex colors with UV mapping."""
+    print(f"Generating texture (UV method: {uv_method}, size: {texture_size}x{texture_size})...")
+    
+    try:
+        import trimesh
+        from PIL import Image
+        
+        # Convert to trimesh
+        vertices = np.asarray(mesh.vertices)
+        faces = np.asarray(mesh.triangles)
+        vertex_colors = np.asarray(mesh.vertex_colors) if mesh.has_vertex_colors() else None
+        
+        if vertex_colors is None:
+            print("  Warning: No vertex colors to generate texture from")
+            return mesh, None
+        
+        tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+        
+        # Generate UV coordinates
+        if uv_method == "simple":
+            # Box projection (fast, simple)
+            bounds = tmesh.bounds
+            size = bounds[1] - bounds[0]
+            
+            # Project to dominant plane
+            if size[2] < min(size[0], size[1]):  # Flat in Z
+                uvs = vertices[:, :2] - bounds[0, :2]
+                uvs = uvs / size[:2].max()
+            elif size[1] < min(size[0], size[2]):  # Flat in Y
+                uvs = vertices[:, [0, 2]] - bounds[0, [0, 2]]
+                uvs = uvs / size[[0, 2]].max()
+            else:  # Flat in X
+                uvs = vertices[:, [1, 2]] - bounds[0, [1, 2]]
+                uvs = uvs / size[[1, 2]].max()
+        else:
+            # Smart unwrap (better quality, slower)
+            # Use trimesh's UV unwrapping
+            try:
+                uvs, faces_uv = trimesh.visual.uv.unwrap(tmesh)
+            except:
+                print("  Warning: Smart unwrap failed, falling back to simple")
+                # Fallback to simple
+                bounds = tmesh.bounds
+                size = bounds[1] - bounds[0]
+                uvs = vertices[:, :2] - bounds[0, :2]
+                uvs = uvs / size[:2].max()
+        
+        # Create texture image
+        texture = Image.new('RGB', (texture_size, texture_size), color=(128, 128, 128))
+        pixels = texture.load()
+        
+        # Sample colors to texture
+        for i, uv in enumerate(uvs):
+            u = int(np.clip(uv[0], 0, 0.999) * texture_size)
+            v = int(np.clip(uv[1], 0, 0.999) * texture_size)
+            color = tuple((vertex_colors[i] * 255).astype(np.uint8))
+            pixels[u, v] = color
+        
+        # Add UVs to mesh
+        mesh.triangle_uvs = o3d.utility.Vector2dVector(uvs[faces].reshape(-1, 2))
+        
+        print(f"  ✓ Generated {texture_size}x{texture_size} texture with {uv_method} UV mapping")
+        return mesh, texture
+        
+    except ImportError as e:
+        print(f"  Warning: Texture generation requires trimesh and PIL: {e}")
+        return mesh, None
+    except Exception as e:
+        print(f"  Warning: Texture generation failed: {e}")
+        return mesh, None
+
+
+def set_origin_to_bottom(mesh):
+    """Move mesh origin to bottom corner (min_bound) for better placement and 3D printing."""
+    bbox = mesh.get_axis_aligned_bounding_box()
+    translation = -bbox.min_bound
+    mesh.translate(translation)
+    print(f"  Moved origin to bottom corner (translated by {translation})")
+    return mesh
+
+
+def post_process_mesh(mesh, pcd=None, cleanup=True, simplify_target=None, simplify_method="uniform", 
+                      adaptive_threshold=0.1, fill_holes_size=None, origin_bottom=True, 
+                      generate_tex=False, uv_method="simple", texture_size=2048):
+    """Post-process mesh with cleanup, simplification, hole filling, and texture generation."""
+    original_triangles = len(mesh.triangles)
+    texture = None
+    
+    if cleanup:
+        print("Performing mesh cleanup...")
+        # Remove duplicates and degenerate geometry
+        mesh.remove_duplicated_vertices()
+        mesh.remove_duplicated_triangles()
+        mesh.remove_degenerate_triangles()
+        mesh.remove_unreferenced_vertices()
+        print(f"  Removed duplicates/degenerates: {original_triangles - len(mesh.triangles)} triangles")
+    
+    if simplify_target and simplify_target > 0:
+        if len(mesh.triangles) > simplify_target:
+            if simplify_method == "adaptive":
+                mesh = adaptive_simplify(mesh, simplify_target, adaptive_threshold)
+            else:  # uniform
+                print(f"Uniform simplification to {simplify_target} triangles...")
+                mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=simplify_target)
+                print(f"  Simplified: {original_triangles} → {len(mesh.triangles)} triangles")
+        else:
+            print(f"  Mesh already has fewer triangles ({len(mesh.triangles)}) than target")
+    
+    if fill_holes_size and fill_holes_size > 0:
+        print(f"Attempting to fill holes smaller than {fill_holes_size}...")
+        try:
+            import trimesh
+            vertices = np.asarray(mesh.vertices)
+            faces = np.asarray(mesh.triangles)
+            tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            tmesh.fill_holes()
+            mesh.vertices = o3d.utility.Vector3dVector(tmesh.vertices)
+            mesh.triangles = o3d.utility.Vector3iVector(tmesh.faces)
+            print(f"  Filled holes: now {len(mesh.triangles)} triangles")
+        except ImportError:
+            print("  Warning: trimesh not available for hole filling")
+        except Exception as e:
+            print(f"  Warning: hole filling failed: {e}")
+    
+    if origin_bottom:
+        mesh = set_origin_to_bottom(mesh)
+    
+    if generate_tex and pcd is not None:
+        mesh, texture = generate_texture(mesh, pcd, uv_method, texture_size)
+    
+    return mesh, texture
+
+
+def save_mesh(mesh, output_filename, output_format):
+    """Save the mesh to a file in the specified format."""
+    # Determine the actual output path
+    base_name, ext = os.path.splitext(output_filename)
+    
+    # Map format to extension
+    format_extensions = {
+        "obj": ".obj",
+        "glb": ".glb",
+        "stl": ".stl",
+        "ply": ".ply"
+    }
+    
+    if output_format not in format_extensions:
+        raise ValueError(f"Unsupported output format: {output_format}")
+    
+    # Use the specified format extension
+    output_path = base_name + format_extensions[output_format]
+    
+    print(f"Saving mesh to: {output_path}")
+    
+    # Compute vertex normals for better visualization
+    mesh.compute_vertex_normals()
+    
+    # Use trimesh for GLB export (Open3D's GLB exporter is broken in v0.19.0)
+    if output_format == "glb":
+        try:
+            import trimesh
+            vertices = np.asarray(mesh.vertices)
+            faces = np.asarray(mesh.triangles)
+            
+            # Convert colors if present
+            if mesh.has_vertex_colors():
+                colors = np.asarray(mesh.vertex_colors)
+                colors_255 = (colors * 255).astype(np.uint8)
+                tmesh = trimesh.Trimesh(vertices=vertices, faces=faces, vertex_colors=colors_255)
+            else:
+                tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            
+            tmesh.export(output_path)
+            print(f"Mesh successfully saved to: {output_path} (using trimesh)")
+        except ImportError:
+            print("Warning: trimesh not installed, falling back to Open3D (may have issues)")
+            print("Install with: pip install trimesh")
+            success = o3d.io.write_triangle_mesh(output_path, mesh)
+            if not success:
+                raise RuntimeError(f"Failed to save mesh to: {output_path}")
+    else:
+        # Use Open3D for other formats
+        success = o3d.io.write_triangle_mesh(output_path, mesh)
+        
+        if success:
+            print(f"Mesh successfully saved to: {output_path}")
+        else:
+            raise RuntimeError(f"Failed to save mesh to: {output_path}")
+    
+    return output_path
+
+
+def main():
+    """Main function to parse arguments and execute the meshing pipeline."""
+    parser = argparse.ArgumentParser(
+        description="Convert point cloud to mesh using Open3D",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python mesher.py --input_file cloud.ply --output_filename mesh.ply --output_format obj --meshing_method poisson
+  python mesher.py --input_file cloud.ply --output_filename mesh.glb --output_format glb --meshing_method bpa
+  python mesher.py --input_file cloud.ply --output_filename mesh.stl --output_format stl --meshing_method alpha
+        """
+    )
+    
+    parser.add_argument(
+        "--input_file",
+        type=str,
+        required=True,
+        help="Path to input PLY point cloud file (must be a valid .ply file containing point cloud data)"
+    )
+    
+    parser.add_argument(
+        "--output_filename",
+        type=str,
+        required=True,
+        help="Path to output mesh file (the file extension will be automatically set based on --output_format)"
+    )
+    
+    parser.add_argument(
+        "--output_format",
+        type=str,
+        default="obj",
+        choices=["obj", "glb", "stl", "ply"],
+        help="Output file format (default: obj)"
+    )
+    
+    # Post-processing options
+    parser.add_argument(
+        "--no-cleanup",
+        action="store_true",
+        help="Disable automatic mesh cleanup (remove duplicates, degenerates, unreferenced vertices)"
+    )
+    
+    parser.add_argument(
+        "--simplify",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Simplify mesh to N triangles using quadric decimation (reduces file size)"
+    )
+    
+    parser.add_argument(
+        "--fill-holes",
+        type=float,
+        default=None,
+        metavar="SIZE",
+        help="Fill holes smaller than SIZE (requires trimesh, experimental)"
+    )
+    
+    parser.add_argument(
+        "--simplify-method",
+        type=str,
+        default="uniform",
+        choices=["uniform", "adaptive"],
+        help="Simplification method: uniform (standard) or adaptive (preserves detail in high-curvature areas)"
+    )
+    
+    parser.add_argument(
+        "--adaptive-threshold",
+        type=float,
+        default=0.1,
+        metavar="T",
+        help="Curvature threshold for adaptive simplification (default: 0.1, higher = more preservation)"
+    )
+    
+    parser.add_argument(
+        "--generate-texture",
+        action="store_true",
+        help="Generate texture map from vertex colors"
+    )
+    
+    parser.add_argument(
+        "--uv-method",
+        type=str,
+        default="simple",
+        choices=["simple", "smart"],
+        help="UV mapping method: simple (box projection, fast) or smart (unwrap, better quality)"
+    )
+    
+    parser.add_argument(
+        "--texture-size",
+        type=int,
+        default=2048,
+        metavar="SIZE",
+        help="Texture resolution (default: 2048x2048)"
+    )
+    
+    parser.add_argument(
+        "--origin",
+        type=str,
+        default="bottom",
+        choices=["bottom", "center"],
+        help="Origin position: bottom (min_bound at [0,0,0], default) or center (original position)"
+    )
+    
+    parser.add_argument(
+        "--meshing_method",
+        type=str,
+        default="poisson",
+        choices=["poisson", "bpa", "alpha"],
+        help="""Meshing algorithm to use (default: poisson):
+        - poisson: Poisson Surface Reconstruction - Best for smooth, watertight meshes. 
+                   Solves a global optimization problem and is highly effective at handling noisy data. 
+                   Usually produces the most "professional" looking results.
+        - bpa: Ball Pivoting Algorithm - Best for preserving the exact positions of the original points. 
+               "Rolls" a virtual ball over the cloud to connect points into triangles.
+        - alpha: Alpha Shapes - A more geometric approach that creates a "shrink-wrapped" boundary around the points.
+        """
+    )
+    
+    args = parser.parse_args()
+    
+    try:
+        # Load point cloud
+        pcd = load_point_cloud(args.input_file)
+        
+        # Generate mesh
+        mesh = generate_mesh(pcd, args.meshing_method)
+    
+        # Post-process mesh
+        cleanup = not args.no_cleanup
+        origin_bottom = (args.origin == "bottom")
+        mesh, texture = post_process_mesh(
+            mesh,
+            pcd=pcd,
+            cleanup=cleanup,
+            simplify_target=args.simplify,
+            simplify_method=args.simplify_method,
+            adaptive_threshold=args.adaptive_threshold,
+            fill_holes_size=args.fill_holes,
+            origin_bottom=origin_bottom,
+            generate_tex=args.generate_texture,
+            uv_method=args.uv_method,
+            texture_size=args.texture_size
+        )
+        
+        # Validate mesh
+        if len(mesh.triangles) == 0:
+            print("WARNING: Generated mesh has no triangles. Try a different meshing method or adjust parameters.")
+            sys.exit(1)
+        
+        # Save mesh
+        save_mesh(mesh, args.output_filename, args.output_format)
+        
+        print("\nMeshing completed successfully!")
+        
+    except Exception as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

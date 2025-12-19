@@ -94,16 +94,76 @@ class DualPaneMeshViewer:
             sys.exit(1)
     
     def _load_mesh(self, method, format_type):
-        """Load a mesh based on method and format."""
-        # Extract base name from input file (e.g., "chiller" from "chiller.ply")
+        """Load or generate mesh on-demand."""
         input_base = Path(self.input_file).stem
         mesh_filename = f"{input_base}_{method}.{format_type}"
         mesh_path = self.mesh_dir / mesh_filename
         
+        # Check if mesh exists
         if not mesh_path.exists():
-            print(f"Warning: Mesh file not found: {mesh_path}")
-            return None
+            print(f"Mesh not found: {mesh_path}")
+            print(f"Generating {method} mesh on-demand...")
+            
+            # Import meshing functions
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent))
+            try:
+                from mesher import generate_mesh, post_process_mesh
+                
+                # Generate mesh
+                mesh = generate_mesh(self.point_cloud, method)
+                
+                # Post-process
+                mesh, texture = post_process_mesh(
+                    mesh,
+                    pcd=self.point_cloud,
+                    cleanup=True,
+                    simplify_target=100000,
+                    simplify_method="uniform",
+                    adaptive_threshold=0.1,
+                    fill_holes_size=None,
+                    origin_bottom=True,
+                    generate_tex=False,
+                    uv_method="simple",
+                    texture_size=2048
+                )
+                
+                print(f"✓ Generated: {len(mesh.vertices)} vertices, {len(mesh.triangles)} triangles")
+                
+                # Save for future use
+                try:
+                    if format_type == "glb":
+                        import trimesh
+                        import numpy as np
+                        vertices = np.asarray(mesh.vertices)
+                        faces = np.asarray(mesh.triangles)
+                        colors = np.asarray(mesh.vertex_colors) if mesh.has_vertex_colors() else None
+                        
+                        if colors is not None:
+                            colors_255 = (colors * 255).astype(np.uint8)
+                            tmesh = trimesh.Trimesh(vertices=vertices, faces=faces, vertex_colors=colors_255)
+                        else:
+                            tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+                        
+                        tmesh.export(str(mesh_path))
+                    else:
+                        o3d.io.write_triangle_mesh(str(mesh_path), mesh)
+                    
+                    print(f"✓ Saved to: {mesh_path}")
+                except Exception as e:
+                    print(f"Warning: Could not save: {e}")
+                
+                # Compute normals for rendering
+                mesh.compute_vertex_normals()
+                return mesh
+                
+            except Exception as e:
+                print(f"✗ Failed to generate: {e}")
+                import traceback
+                traceback.print_exc()
+                return None
         
+        # Load existing mesh
         try:
             mesh = o3d.io.read_triangle_mesh(str(mesh_path))
             
@@ -111,10 +171,8 @@ class DualPaneMeshViewer:
                 print(f"Warning: Mesh has no triangles: {mesh_path}")
                 return None
             
-            # Compute normals for proper rendering
             mesh.compute_vertex_normals()
             
-            # Report color status
             if mesh.has_vertex_colors():
                 print(f"Mesh has vertex colors")
             else:
@@ -124,9 +182,9 @@ class DualPaneMeshViewer:
             return mesh
             
         except Exception as e:
-            print(f"Error loading mesh {mesh_path}: {e}")
+            print(f"Error loading mesh: {e}")
             return None
-    
+
     def _setup_ui(self):
         """Setup the user interface with dual panes and controls."""
         # Create main layout

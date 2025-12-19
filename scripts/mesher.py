@@ -13,6 +13,7 @@ Example:
 """
 
 import argparse
+from pathlib import Path
 import sys
 import os
 import numpy as np
@@ -437,21 +438,29 @@ Examples:
     )
     
     parser.add_argument(
-        "--input_file",
+        "--input-path",
         type=str,
         required=True,
-        help="Path to input PLY point cloud file (must be a valid .ply file containing point cloud data)"
+        help="Path to input PLY point cloud file or directory containing .ply files for batch processing" " point cloud data)"
     )
     
     parser.add_argument(
-        "--output_filename",
+        "--output-path",
         type=str,
-        required=True,
-        help="Path to output mesh file (the file extension will be automatically set based on --output_format)"
+        required=False,
+        default=None,
+        help="Path to output mesh file (optional for batch mode)"
     )
     
     parser.add_argument(
-        "--output_format",
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output directory for batch processing (default: meshes/)"  
+    )
+    
+    parser.add_argument(
+        "--output-format",
         type=str,
         default="obj",
         choices=["obj", "glb", "stl", "ply"],
@@ -528,7 +537,7 @@ Examples:
     )
     
     parser.add_argument(
-        "--meshing_method",
+        "--meshing-method",
         type=str,
         default="poisson",
         choices=["poisson", "bpa", "alpha"],
@@ -544,9 +553,37 @@ Examples:
     
     args = parser.parse_args()
     
+    # Batch processing for directories
+    input_path = Path(args.input_path)
+    if input_path.is_dir():
+        print(f"Batch processing: {input_path}")
+        ply_files = sorted(input_path.glob("*.ply"))
+        if not ply_files:
+            print("No .ply files found")
+            return
+        print(f"Found {len(ply_files)} files")
+        output_dir = Path(args.output_dir or "meshes")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for i, ply_file in enumerate(ply_files, 1):
+            print(f"[{i}/{len(ply_files)}] {ply_file.name}")
+            try:
+                pcd = load_point_cloud(str(ply_file))
+                mesh = generate_mesh(pcd, args.meshing_method)
+                cleanup = not args.no_cleanup
+                origin_bottom = (args.origin == "bottom")
+                mesh, texture = post_process_mesh(mesh, pcd=pcd, cleanup=cleanup, simplify_target=args.simplify, simplify_method=args.simplify_method, adaptive_threshold=args.adaptive_threshold, fill_holes_size=args.fill_holes, origin_bottom=origin_bottom, generate_tex=args.generate_texture, uv_method=args.uv_method, texture_size=args.texture_size)
+                out_name = f"{ply_file.stem}_{args.meshing_method}.{args.output_format}"
+                out_path = output_dir / out_name
+                save_mesh(mesh, str(out_path), args.output_format, texture)
+                print(f"Saved: {out_name}")
+            except Exception as e:
+                print(f"Failed: {e}")
+        print(f"Complete: {len(ply_files)} files")
+        return
+    
     try:
         # Load point cloud
-        pcd = load_point_cloud(args.input_file)
+        pcd = load_point_cloud(args.input_path)
         
         # Generate mesh
         mesh = generate_mesh(pcd, args.meshing_method)
@@ -574,7 +611,7 @@ Examples:
             sys.exit(1)
         
         # Save mesh
-        save_mesh(mesh, args.output_filename, args.output_format)
+        output_path = save_mesh(mesh, args.output_path, args.output_format, texture)
         
         print("\nMeshing completed successfully!")
         
