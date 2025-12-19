@@ -645,9 +645,6 @@ class DualPaneMeshViewer:
             self.method_label.text = f"Method: {self.current_method.upper()}"
             self.format_label.text = f"Format: {self.current_format.upper()}"
             self.vertices_label.text = f"Vertices: {len(mesh.vertices):,}"
-            self.triangles_label.text = f"Triangles: {len(mesh.triangles):,}""
-                                   f"Vertices: {len(mesh.vertices):,"
-                                   f"Triangles: {len(mesh.triangles):,}")
             
             # Update dimensions
             self._update_dimension_display()
