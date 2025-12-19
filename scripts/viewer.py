@@ -514,11 +514,9 @@ class DualPaneMeshViewer:
         
         # Update info
         self.method_label.text = f"Method: {self.current_method.upper()}"
-            self.format_label.text = f"Format: {self.current_format.upper()}"
-            self.vertices_label.text = f"Vertices: {len(mesh.vertices):,}"
-            self.triangles_label.text = f"Triangles: {len(mesh.triangles):,}"}\n"
-                               f"Vertices: {len(mesh.vertices):,}\n"
-                               f"Triangles: {len(mesh.triangles):,}")
+        self.format_label.text = f"Format: {self.current_format.upper()}"
+        self.vertices_label.text = f"Vertices: {len(mesh.vertices):,}"
+        self.triangles_label.text = f"Triangles: {len(mesh.triangles):,}"
         
         # Clear and update right scene
         self.scene_widget_right.scene.clear_geometry()
