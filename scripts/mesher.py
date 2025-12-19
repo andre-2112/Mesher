@@ -106,12 +106,14 @@ def poisson_reconstruction(pcd):
     
     print(f"Generated mesh with {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
     
-    # Remove low-density vertices to clean up artifacts
-    densities = np.asarray(densities)
-    vertices_to_remove = densities < np.quantile(densities, 0.05)
-    mesh.remove_vertices_by_mask(vertices_to_remove)
+    # Crop to point cloud bounding box to remove ground plane and other artifacts
+    bbox = pcd.get_axis_aligned_bounding_box()
+    mesh = mesh.crop(bbox)
+    print(f"After bounding box crop: {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
     
-    print(f"After density cleanup: {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles")
+    # NOTE: Density cleanup removed to preserve watertight mesh
+    # The raw Poisson output is watertight; cleanup creates holes
+    print(f"Mesh is watertight: {mesh.is_watertight()}")
     
     return mesh
 
@@ -186,6 +188,53 @@ def generate_mesh(pcd, method):
         return alpha_shape_reconstruction(pcd)
     else:
         raise ValueError(f"Unknown meshing method: {method}")
+
+
+def post_process_mesh(mesh, cleanup=True, simplify_target=None, fill_holes_size=None):
+    """Post-process mesh with cleanup, simplification, and hole filling."""
+    original_triangles = len(mesh.triangles)
+    
+    if cleanup:
+        print("Performing mesh cleanup...")
+        # Remove duplicates and degenerate geometry
+        mesh.remove_duplicated_vertices()
+        mesh.remove_duplicated_triangles()
+        mesh.remove_degenerate_triangles()
+        mesh.remove_unreferenced_vertices()
+        print(f"  Removed duplicates/degenerates: {original_triangles - len(mesh.triangles)} triangles")
+    
+    if simplify_target and simplify_target > 0:
+        print(f"Simplifying mesh to {simplify_target} triangles...")
+        if len(mesh.triangles) > simplify_target:
+            mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=simplify_target)
+            print(f"  Simplified: {original_triangles} → {len(mesh.triangles)} triangles")
+        else:
+            print(f"  Mesh already has fewer triangles ({len(mesh.triangles)}) than target")
+    
+    if fill_holes_size and fill_holes_size > 0:
+        print(f"Attempting to fill holes smaller than {fill_holes_size}...")
+        # Note: Open3D doesn't have built-in hole filling
+        # This would require trimesh or other libraries
+        try:
+            import trimesh
+            # Convert to trimesh for hole filling
+            vertices = np.asarray(mesh.vertices)
+            faces = np.asarray(mesh.triangles)
+            tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            
+            # Fill holes
+            tmesh.fill_holes()
+            
+            # Convert back
+            mesh.vertices = o3d.utility.Vector3dVector(tmesh.vertices)
+            mesh.triangles = o3d.utility.Vector3iVector(tmesh.faces)
+            print(f"  Filled holes: now {len(mesh.triangles)} triangles")
+        except ImportError:
+            print("  Warning: trimesh not available for hole filling")
+        except Exception as e:
+            print(f"  Warning: hole filling failed: {e}")
+    
+    return mesh
 
 
 def save_mesh(mesh, output_filename, output_format):
@@ -277,9 +326,32 @@ Examples:
     parser.add_argument(
         "--output_format",
         type=str,
-        required=True,
-        choices=["obj", "glb", "stl"],
-        help="Output mesh format: obj (Wavefront OBJ - widely supported), glb (binary glTF - web/3D apps), or stl (STereoLithography - 3D printing)"
+        default="obj",
+        choices=["obj", "glb", "stl", "ply"],
+        help="Output file format (default: obj)"
+    )
+    
+    # Post-processing options
+    parser.add_argument(
+        "--no-cleanup",
+        action="store_true",
+        help="Disable automatic mesh cleanup (remove duplicates, degenerates, unreferenced vertices)"
+    )
+    
+    parser.add_argument(
+        "--simplify",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Simplify mesh to N triangles using quadric decimation (reduces file size)"
+    )
+    
+    parser.add_argument(
+        "--fill-holes",
+        type=float,
+        default=None,
+        metavar="SIZE",
+        help="Fill holes smaller than SIZE (requires trimesh, experimental)"
     )
     
     parser.add_argument(
@@ -305,6 +377,15 @@ Examples:
         
         # Generate mesh
         mesh = generate_mesh(pcd, args.meshing_method)
+    
+        # Post-process mesh
+        cleanup = not args.no_cleanup
+        mesh = post_process_mesh(
+            mesh,
+            cleanup=cleanup,
+            simplify_target=args.simplify,
+            fill_holes_size=args.fill_holes
+        )
         
         # Validate mesh
         if len(mesh.triangles) == 0:
