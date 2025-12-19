@@ -6,8 +6,17 @@ Production-ready mesh generation toolkit with automatic color detection, advance
 
 - **Auto Color Detection**: Automatically handles Gaussian Splatting SH coefficients and RGB formats
 - **Watertight Meshes**: Poisson reconstruction with bounding box cropping (removes artifacts)
-- **Post-Processing**: Cleanup, simplification, and hole-filling options
-- **Interactive Viewer**: Dual-pane display with method/format switching and background color picker
+- **Post-Processing**: Cleanup, simplification, hole-filling, adaptive simplification, and texture generation
+- **Interactive Viewer**: Dual-pane display with advanced controls:
+  - Method/format switching and background color picker
+  - Mesh scaling with dimension display
+  - Interactive remeshing with poly count control
+  - View synchronization (rotation/pan/zoom locked by default)
+  - Display controls: bounding box, wireframe, normals visualization
+  - UP orientation control (Y-up/Z-up)
+  - Normal length and color customization
+- **Batch Processing**: Process entire directories of point clouds
+- **On-Demand Meshing**: Viewer generates missing meshes automatically
 - **Multiple Formats**: Export to OBJ, GLB, STL, PLY
 
 ## Quick Start

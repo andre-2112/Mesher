@@ -692,34 +692,34 @@ class DualPaneMeshViewer:
             pass
     
     def _on_bbox_changed(self, checked):
-        \"\"\"Toggle bounding box display.\"\"\"
+        """Toggle bounding box display."""
         self.show_bbox = checked
         
         if checked:
             # Add bounding boxes
             pcd_bbox = self.point_cloud.get_axis_aligned_bounding_box()
             pcd_bbox.color = (0, 1, 0)  # Green
-            self.scene_widget_left.scene.add_geometry(\"pcd_bbox\", pcd_bbox, rendering.MaterialRecord())
+            self.scene_widget_left.scene.add_geometry("pcd_bbox", pcd_bbox, rendering.MaterialRecord())
             
             if self.current_mesh:
                 mesh_bbox = self.current_mesh.get_axis_aligned_bounding_box()
                 mesh_bbox.color = (0, 1, 0)  # Green
-                self.scene_widget_right.scene.add_geometry(\"mesh_bbox\", mesh_bbox, rendering.MaterialRecord())
+                self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
             # Remove bounding boxes
-            self.scene_widget_left.scene.remove_geometry(\"pcd_bbox\")
-            self.scene_widget_right.scene.remove_geometry(\"mesh_bbox\")
+            self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+            self.scene_widget_right.scene.remove_geometry("mesh_bbox")
         
-        print(f\"Bounding box: {'ON' if checked else 'OFF'}\")
+        print(f"Bounding box: {'ON' if checked else 'OFF'}")
     
     def _on_wireframe_changed(self, checked):
-        \"\"\"Toggle wireframe display.\"\"\"
+        """Toggle wireframe display."""
         self.show_wireframe = checked
         
         if self.current_mesh:
-            self.scene_widget_right.scene.remove_geometry(\"mesh\")
+            self.scene_widget_right.scene.remove_geometry("mesh")
             mat = rendering.MaterialRecord()
-            mat.shader = \"defaultLit\"
+            mat.shader = "defaultLit"
             if checked:
                 mat.line_width = 1.0
                 # Create wireframe by adding edges
@@ -735,16 +735,16 @@ class DualPaneMeshViewer:
                 line_set.points = self.current_mesh.vertices
                 line_set.lines = o3d.utility.Vector2iVector(edges)
                 line_set.colors = o3d.utility.Vector3dVector([[0, 0, 0]] * len(edges))  # Black
-                self.scene_widget_right.scene.add_geometry(\"wireframe\", line_set, rendering.MaterialRecord())
+                self.scene_widget_right.scene.add_geometry("wireframe", line_set, rendering.MaterialRecord())
             else:
-                self.scene_widget_right.scene.remove_geometry(\"wireframe\")
+                self.scene_widget_right.scene.remove_geometry("wireframe")
             
-            self.scene_widget_right.scene.add_geometry(\"mesh\", self.current_mesh, mat)
+            self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
         
-        print(f\"Wireframe: {'ON' if checked else 'OFF'}\")
+        print(f"Wireframe: {'ON' if checked else 'OFF'}")
     
     def _on_normals_changed(self, checked):
-        \"\"\"Toggle normals display.\"\"\"
+        """Toggle normals display."""
         self.show_normals = checked
         
         try:
@@ -772,7 +772,7 @@ class DualPaneMeshViewer:
             pcd_line_set.points = o3d.utility.Vector3dVector(pcd_line_points)
             pcd_line_set.lines = o3d.utility.Vector2iVector(pcd_lines)
             pcd_line_set.colors = o3d.utility.Vector3dVector([normal_color] * len(pcd_lines))
-            self.scene_widget_left.scene.add_geometry(\"pcd_normals\", pcd_line_set, rendering.MaterialRecord())
+            self.scene_widget_left.scene.add_geometry("pcd_normals", pcd_line_set, rendering.MaterialRecord())
             
             # Add normals for mesh
             if self.current_mesh and self.current_mesh.has_vertex_normals():
@@ -790,13 +790,13 @@ class DualPaneMeshViewer:
                 mesh_line_set.points = o3d.utility.Vector3dVector(mesh_line_points)
                 mesh_line_set.lines = o3d.utility.Vector2iVector(mesh_lines)
                 mesh_line_set.colors = o3d.utility.Vector3dVector([normal_color] * len(mesh_lines))
-                self.scene_widget_right.scene.add_geometry(\"mesh_normals\", mesh_line_set, rendering.MaterialRecord())
+                self.scene_widget_right.scene.add_geometry("mesh_normals", mesh_line_set, rendering.MaterialRecord())
         else:
             # Remove normals
-            self.scene_widget_left.scene.remove_geometry(\"pcd_normals\")
-            self.scene_widget_right.scene.remove_geometry(\"mesh_normals\")
+            self.scene_widget_left.scene.remove_geometry("pcd_normals")
+            self.scene_widget_right.scene.remove_geometry("mesh_normals")
         
-        print(f\"Normals: {'ON' if checked else 'OFF'}\")
+        print(f"Normals: {'ON' if checked else 'OFF'}")
     
     def _on_bbox_changed(self, checked):
         """Toggle bounding box display."""
