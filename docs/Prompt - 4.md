@@ -16,15 +16,12 @@ Add the following enhancements to the viewer:
 - Create and add UI and the functionality for Locking/syncronize the display panels (point cold and mesh), with check box optioons for locking the orientation, rotation, panning and zooming of the point cloud and the mesh.
 
 ##
-Go ahead and implement the view syncronization.
-
-But first, Make the side drawer wider. At least 60% wider then the current width. 
+- Go ahead and implement the view syncronization.
+- But first, Make the side drawer wider. At least 60% wider then the current width. 
 
 ##
 - The viewr crashes when i try to move the scale slider. remove the slider. lets have only fields for entering absolute values. 
-
 - Create and add UI and the functionality for the UP orientation. Z up should be the default.
-
 - Can you execute the viewr and test UI to make sure all work?
 
 ##
@@ -39,6 +36,19 @@ But first, Make the side drawer wider. At least 60% wider then the current width
 - Add "Rendering" as a display option. if unselected and mesh selected then display would only show the see through mesh. if selected (with wireframe deselected)then display would show the mesh with the default rendering options.
 - Start mesh with origin same as pc and provide a button to apply default mesh origin (which is lower left).
 - Increase side panel to 600px.
+- Test new UI and new functionality and make sure everything works.
+- Update gf AFTER all tests pass.
+
+##
+- Option to invert normals
+- Bounding box in blue and 4x thicker.
+- Display wireframe thickness back to the original thickness and then just doubled. (2x of the original thickness).
+- Make it so on-demand meshing is the default mode of operation. - unless the user invokes the viewr wiht a parameter for reading a directory with mesh files. so adjust the cli arguemnts as well. 
+- Fix "origin reset" feature. it should be called simply "mesh origin" and entry fields for x, y, z. and a button on the side for apply. default values for x, y andz are for origin on the lower left. so initially the mesh will have the same origin as the point cloud and only after Apply being clicked is that the mesh origin will be changed.
+- Test everything and make sure it works.
+- Update documents for changes in cli and other possible new fearures. 
+- create 2 SHORT user guide documents: 1 for the viewer and 1 for the mesher.   
+- Update gh AFTER all tests pass.
 
 ##
 1 - in the optional enhanecements you mentioned #1 - add mesh repair algorithms for better watertight results. 

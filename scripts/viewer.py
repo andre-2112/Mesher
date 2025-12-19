@@ -61,6 +61,7 @@ class DualPaneMeshViewer:
         self.show_bbox = False
         self.show_wireframe = False
         self.show_normals = False
+        self.invert_normals = False
         self.show_rendering = True
         self.mesh_origin_offset = None
         
@@ -360,6 +361,10 @@ class DualPaneMeshViewer:
         self.normals_cb = gui.Checkbox("Show Normals")
         self.normals_cb.set_on_checked(self._on_normals_changed)
         self.settings.add_child(self.normals_cb)
+
+        self.invert_normals_cb = gui.Checkbox("Invert Normals")
+        self.invert_normals_cb.set_on_checked(self._on_invert_normals_changed)
+        self.settings.add_child(self.invert_normals_cb)
         
         # Normal length
         normal_len_layout = gui.Horiz()
@@ -382,9 +387,22 @@ class DualPaneMeshViewer:
         self.rendering_cb.set_on_checked(self._on_rendering_changed)
         self.settings.add_child(self.rendering_cb)
 
-        self.origin_button = gui.Button("Reset Mesh Origin")
-        self.origin_button.set_on_clicked(self._on_origin_reset)
-        self.settings.add_child(self.origin_button)
+        # Mesh Origin
+        origin_layout = gui.Horiz()
+        origin_layout.add_child(gui.Label("Mesh Origin:"))
+        self.origin_x = gui.TextEdit()
+        self.origin_x.text_value = "0.0"
+        origin_layout.add_child(self.origin_x)
+        self.origin_y = gui.TextEdit()
+        self.origin_y.text_value = "0.0"
+        origin_layout.add_child(self.origin_y)
+        self.origin_z = gui.TextEdit()
+        self.origin_z.text_value = "0.0"
+        origin_layout.add_child(self.origin_z)
+        self.origin_apply = gui.Button("Apply")
+        self.origin_apply.set_on_clicked(self._on_origin_apply)
+        origin_layout.add_child(self.origin_apply)
+        self.settings.add_child(origin_layout)
         
         self.settings.add_fixed(0.5 * em)
         
@@ -699,12 +717,12 @@ class DualPaneMeshViewer:
         if checked:
             # Add bounding boxes
             pcd_bbox = self.point_cloud.get_axis_aligned_bounding_box()
-            pcd_bbox.color = (0, 1, 0)  # Green
+            pcd_bbox.color = (0, 0, 1)  # Green
             self.scene_widget_left.scene.add_geometry("pcd_bbox", pcd_bbox, rendering.MaterialRecord())
             
             if self.current_mesh:
                 mesh_bbox = self.current_mesh.get_axis_aligned_bounding_box()
-                mesh_bbox.color = (0, 1, 0)  # Green
+                mesh_bbox.color = (0, 0, 1)  # Green
                 self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
             # Remove bounding boxes
@@ -823,12 +841,12 @@ class DualPaneMeshViewer:
 
         if checked:
             pcd_bbox = self.point_cloud.get_axis_aligned_bounding_box()
-            pcd_bbox.color = (0, 1, 0)
+            pcd_bbox.color = (0, 0, 1)
             self.scene_widget_left.scene.add_geometry("pcd_bbox", pcd_bbox, rendering.MaterialRecord())
 
             if self.current_mesh:
                 mesh_bbox = self.current_mesh.get_axis_aligned_bounding_box()
-                mesh_bbox.color = (0, 1, 0)
+                mesh_bbox.color = (0, 0, 1)
                 self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
             try:
