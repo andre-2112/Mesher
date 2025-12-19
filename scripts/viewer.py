@@ -80,6 +80,7 @@ class DualPaneMeshViewer:
         
         self.window = self.app.create_window("Mesh Viewer - Point Cloud & Mesh Comparison", 1600, 800)
         self._setup_ui()
+        self._update_mesh()  # Load mesh immediately
         
     def _load_point_cloud(self):
         """Load the point cloud from file."""
