@@ -697,8 +697,14 @@ class DualPaneMeshViewer:
                 self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
             # Remove bounding boxes
+            try:
             self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+            except:
+                pass
+            try:
             self.scene_widget_right.scene.remove_geometry("mesh_bbox")
+            except:
+                pass
         
         print(f"Bounding box: {'ON' if checked else 'OFF'}")
     
@@ -707,7 +713,10 @@ class DualPaneMeshViewer:
         self.show_wireframe = checked
         
         if self.current_mesh:
+            try:
             self.scene_widget_right.scene.remove_geometry("mesh")
+            except:
+                pass
             mat = rendering.MaterialRecord()
             mat.shader = "defaultLit"
             if checked:
@@ -727,7 +736,10 @@ class DualPaneMeshViewer:
                 line_set.colors = o3d.utility.Vector3dVector([[0, 0, 0]] * len(edges))  # Black
                 self.scene_widget_right.scene.add_geometry("wireframe", line_set, rendering.MaterialRecord())
             else:
+                try:
                 self.scene_widget_right.scene.remove_geometry("wireframe")
+                except:
+                    pass
             
             self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
         
@@ -783,8 +795,14 @@ class DualPaneMeshViewer:
                 self.scene_widget_right.scene.add_geometry("mesh_normals", mesh_line_set, rendering.MaterialRecord())
         else:
             # Remove normals
+            try:
             self.scene_widget_left.scene.remove_geometry("pcd_normals")
+            except:
+                pass
+            try:
             self.scene_widget_right.scene.remove_geometry("mesh_normals")
+            except:
+                pass
         
         print(f"Normals: {'ON' if checked else 'OFF'}")
     
@@ -802,8 +820,14 @@ class DualPaneMeshViewer:
                 mesh_bbox.color = (0, 1, 0)
                 self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
+            try:
             self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+            except:
+                pass
+            try:
             self.scene_widget_right.scene.remove_geometry("mesh_bbox")
+            except:
+                pass
 
         print(f"Bounding box: {'ON' if checked else 'OFF'}")
 
@@ -812,7 +836,10 @@ class DualPaneMeshViewer:
         self.show_wireframe = checked
 
         if self.current_mesh:
+            try:
             self.scene_widget_right.scene.remove_geometry("wireframe")
+            except:
+                pass
             if checked:
                 import numpy as np
                 edges = []
@@ -877,8 +904,14 @@ class DualPaneMeshViewer:
                 mesh_line_set.colors = o3d.utility.Vector3dVector([normal_color] * len(mesh_lines))
                 self.scene_widget_right.scene.add_geometry("mesh_normals", mesh_line_set, rendering.MaterialRecord())
         else:
+            try:
             self.scene_widget_left.scene.remove_geometry("pcd_normals")
+            except:
+                pass
+            try:
             self.scene_widget_right.scene.remove_geometry("mesh_normals")
+            except:
+                pass
 
         print(f"Normals: {'ON' if checked else 'OFF'}")
 

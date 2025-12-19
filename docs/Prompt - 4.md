@@ -35,6 +35,12 @@ But first, Make the side drawer wider. At least 60% wider then the current width
 - Make the 3 options above, part of the Display section.
 
 ##
+- Display wireframe in thicker line. maybe 4x.
+- Add "Rendering" as a display option. if unselected and mesh selected then display would only show the see through mesh. if selected (with wireframe deselected)then display would show the mesh with the default rendering options.
+- Start mesh with origin same as pc and provide a button to apply default mesh origin (which is lower left).
+- Increase side panel to 600px.
+
+##
 1 - in the optional enhanecements you mentioned #1 - add mesh repair algorithms for better watertight results. 
 
 2 - what algorithms? what are the expected efficiency of each and difficulty to implement? 
