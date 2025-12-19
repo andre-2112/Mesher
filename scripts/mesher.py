@@ -574,7 +574,7 @@ Examples:
                 mesh, texture = post_process_mesh(mesh, pcd=pcd, cleanup=cleanup, simplify_target=args.simplify, simplify_method=args.simplify_method, adaptive_threshold=args.adaptive_threshold, fill_holes_size=args.fill_holes, origin_bottom=origin_bottom, generate_tex=args.generate_texture, uv_method=args.uv_method, texture_size=args.texture_size)
                 out_name = f"{ply_file.stem}_{args.meshing_method}.{args.output_format}"
                 out_path = output_dir / out_name
-                save_mesh(mesh, str(out_path), args.output_format, texture)
+                save_mesh(mesh, str(out_path), args.output_format)
                 print(f"Saved: {out_name}")
             except Exception as e:
                 print(f"Failed: {e}")
@@ -611,7 +611,7 @@ Examples:
             sys.exit(1)
         
         # Save mesh
-        output_path = save_mesh(mesh, args.output_path, args.output_format, texture)
+        output_path = save_mesh(mesh, args.output_path, args.output_format)
         
         print("\nMeshing completed successfully!")
         
