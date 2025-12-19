@@ -61,6 +61,7 @@ class DualPaneMeshViewer:
         self.show_bbox = False
         self.show_wireframe = False
         self.show_normals = False
+        self.show_axes = True
         self.invert_normals = False
         self.show_rendering = True
         self.mesh_origin_offset = None
@@ -350,6 +351,11 @@ class DualPaneMeshViewer:
         # Display Options
         self.settings.add_child(gui.Label("Display"))
         
+        self.axes_cb = gui.Checkbox("Show Axes")
+        self.axes_cb.checked = True
+        self.axes_cb.set_on_checked(self._on_axes_changed)
+        self.settings.add_child(self.axes_cb)
+
         self.bbox_cb = gui.Checkbox("Show Bounding Box")
         self.bbox_cb.set_on_checked(self._on_bbox_changed)
         self.settings.add_child(self.bbox_cb)
@@ -986,6 +992,14 @@ class DualPaneMeshViewer:
             self._on_normals_changed(False)
             self._on_normals_changed(True)
         print(f"Invert normals: {'ON' if checked else 'OFF'}")
+
+
+    def _on_axes_changed(self, checked):
+        """Toggle axes display."""
+        self.show_axes = checked
+        self.scene_widget_left.scene.show_axes(checked)
+        self.scene_widget_right.scene.show_axes(checked)
+        print(f"Axes: {'ON' if checked else 'OFF'}")
 
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
