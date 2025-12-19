@@ -56,8 +56,11 @@ class DualPaneMeshViewer:
         self.original_mesh = None
         self.scale_factor = 1.0
         self.current_mesh = None
-        self.view_locks = {'rotation': True, 'pan': True, 'zoom': True}  # Default ON
-        self.up_direction = "Z"  # Default to Z-up
+        self.view_locks = {'rotation': True, 'pan': True, 'zoom': True}
+        self.up_direction = "Z"
+        self.show_bbox = False
+        self.show_wireframe = False
+        self.show_normals = False
         
         # Display options
         self.show_bbox = False
@@ -795,6 +798,101 @@ class DualPaneMeshViewer:
         
         print(f\"Normals: {'ON' if checked else 'OFF'}\")
     
+    def _on_bbox_changed(self, checked):
+        """Toggle bounding box display."""
+        self.show_bbox = checked
+
+        if checked:
+            pcd_bbox = self.point_cloud.get_axis_aligned_bounding_box()
+            pcd_bbox.color = (0, 1, 0)
+            self.scene_widget_left.scene.add_geometry("pcd_bbox", pcd_bbox, rendering.MaterialRecord())
+
+            if self.current_mesh:
+                mesh_bbox = self.current_mesh.get_axis_aligned_bounding_box()
+                mesh_bbox.color = (0, 1, 0)
+                self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
+        else:
+            self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+            self.scene_widget_right.scene.remove_geometry("mesh_bbox")
+
+        print(f"Bounding box: {'ON' if checked else 'OFF'}")
+
+    def _on_wireframe_changed(self, checked):
+        """Toggle wireframe display."""
+        self.show_wireframe = checked
+
+        if self.current_mesh:
+            self.scene_widget_right.scene.remove_geometry("wireframe")
+            if checked:
+                import numpy as np
+                edges = []
+                triangles = np.asarray(self.current_mesh.triangles)
+                for tri in triangles:
+                    edges.append([tri[0], tri[1]])
+                    edges.append([tri[1], tri[2]])
+                    edges.append([tri[2], tri[0]])
+
+                line_set = o3d.geometry.LineSet()
+                line_set.points = self.current_mesh.vertices
+                line_set.lines = o3d.utility.Vector2iVector(edges)
+                line_set.colors = o3d.utility.Vector3dVector([[0, 0, 0]] * len(edges))
+                self.scene_widget_right.scene.add_geometry("wireframe", line_set, rendering.MaterialRecord())
+
+        print(f"Wireframe: {'ON' if checked else 'OFF'}")
+
+    def _on_normals_changed(self, checked):
+        """Toggle normals display."""
+        self.show_normals = checked
+
+        try:
+            normal_length = float(self.normal_len_input.text_value)
+            color = self.normal_color_edit.color_value
+            normal_color = [color.red, color.green, color.blue]
+        except:
+            normal_length = 0.01
+            normal_color = [1.0, 0.0, 0.0]
+
+        if checked:
+            import numpy as np
+            pcd_points = np.asarray(self.point_cloud.points)
+            pcd_normals = np.asarray(self.point_cloud.normals)
+
+            pcd_lines = []
+            pcd_line_points = []
+            for pt, normal in zip(pcd_points, pcd_normals):
+                pcd_line_points.append(pt)
+                pcd_line_points.append(pt + normal * normal_length)
+                pcd_lines.append([len(pcd_line_points)-2, len(pcd_line_points)-1])
+
+            pcd_line_set = o3d.geometry.LineSet()
+            pcd_line_set.points = o3d.utility.Vector3dVector(pcd_line_points)
+            pcd_line_set.lines = o3d.utility.Vector2iVector(pcd_lines)
+            pcd_line_set.colors = o3d.utility.Vector3dVector([normal_color] * len(pcd_lines))
+            self.scene_widget_left.scene.add_geometry("pcd_normals", pcd_line_set, rendering.MaterialRecord())
+
+            if self.current_mesh and self.current_mesh.has_vertex_normals():
+                mesh_points = np.asarray(self.current_mesh.vertices)
+                mesh_normals = np.asarray(self.current_mesh.vertex_normals)
+
+                mesh_lines = []
+                mesh_line_points = []
+                for pt, normal in zip(mesh_points, mesh_normals):
+                    mesh_line_points.append(pt)
+                    mesh_line_points.append(pt + normal * normal_length)
+                    mesh_lines.append([len(mesh_line_points)-2, len(mesh_line_points)-1])
+
+                mesh_line_set = o3d.geometry.LineSet()
+                mesh_line_set.points = o3d.utility.Vector3dVector(mesh_line_points)
+                mesh_line_set.lines = o3d.utility.Vector2iVector(mesh_lines)
+                mesh_line_set.colors = o3d.utility.Vector3dVector([normal_color] * len(mesh_lines))
+                self.scene_widget_right.scene.add_geometry("mesh_normals", mesh_line_set, rendering.MaterialRecord())
+        else:
+            self.scene_widget_left.scene.remove_geometry("pcd_normals")
+            self.scene_widget_right.scene.remove_geometry("mesh_normals")
+
+        print(f"Normals: {'ON' if checked else 'OFF'}")
+
+
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
         color_name = list(self.bg_colors.keys())[new_index]
