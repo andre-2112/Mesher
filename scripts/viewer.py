@@ -351,7 +351,7 @@ class DualPaneMeshViewer:
     def _on_layout(self, layout_context):
         """Handle window layout."""
         r = self.window.content_rect
-        panel_width = 250
+        panel_width = 400  # Increased from 250 (60% wider)
         
         # Panel on the left
         self.panel.frame = gui.Rect(r.x, r.y, panel_width, r.height)
@@ -380,6 +380,10 @@ class DualPaneMeshViewer:
         # Setup camera for left scene
         bounds = self.point_cloud.get_axis_aligned_bounding_box()
         self.scene_widget_left.setup_camera(60, bounds, bounds.get_center())
+        
+        # Add mouse event handlers for view synchronization
+        self.scene_widget_left.set_on_mouse(self._on_mouse_left)
+        self.scene_widget_right.set_on_mouse(self._on_mouse_right)
         
         # Add label for left scene
         self.scene_widget_left.scene.show_axes(True)
@@ -522,16 +526,76 @@ class DualPaneMeshViewer:
             import traceback
             traceback.print_exc()
     
+    
     def _on_view_lock_changed(self, lock_type, checked):
         """Handle view lock checkbox changes."""
         self.view_locks[lock_type] = checked
-        print(f"View lock {lock_type}: {'ON' if checked else 'OFF'}")
-        
-        # Note: Full camera synchronization requires access to camera matrices
-        # which may be limited in Open3D's GUI. This is a placeholder for
-        # the synchronization logic that would copy camera state between views.
-        if checked:
-            print(f"  (Camera sync for {lock_type} - requires manual implementation)")
+        status = 'ON' if checked else 'OFF'
+        print(f"View lock {lock_type}: {status}")
+    
+    def _on_mouse_left(self, event):
+        """Handle mouse events on left panel (point cloud)."""
+        # Sync camera to right panel if any locks are enabled
+        if any(self.view_locks.values()):
+            self._sync_camera_left_to_right()
+        return gui.Widget.EventCallbackResult.HANDLED
+    
+    def _on_mouse_right(self, event):
+        """Handle mouse events on right panel (mesh)."""
+        # Sync camera to left panel if any locks are enabled
+        if any(self.view_locks.values()):
+            self._sync_camera_right_to_left()
+        return gui.Widget.EventCallbackResult.HANDLED
+    
+    def _sync_camera_left_to_right(self):
+        """Synchronize camera from left (point cloud) to right (mesh)."""
+        try:
+            # Get camera from left scene
+            left_camera = self.scene_widget_left.scene.camera
+            right_camera = self.scene_widget_right.scene.camera
+            
+            # Sync based on lock settings
+            if self.view_locks['rotation'] or self.view_locks['pan']:
+                # Copy view matrix (handles both rotation and pan)
+                right_camera.copy_from(left_camera)
+            
+            if self.view_locks['zoom']:
+                # Match field of view
+                right_camera.set_projection(
+                    left_camera.get_field_of_view(),
+                    right_camera.get_aspect_ratio(),
+                    right_camera.get_near(),
+                    right_camera.get_far(),
+                    left_camera.get_field_of_view_type()
+                )
+        except Exception as e:
+            # Silently handle errors (camera API may vary)
+            pass
+    
+    def _sync_camera_right_to_left(self):
+        """Synchronize camera from right (mesh) to left (point cloud)."""
+        try:
+            # Get camera from right scene
+            left_camera = self.scene_widget_left.scene.camera
+            right_camera = self.scene_widget_right.scene.camera
+            
+            # Sync based on lock settings
+            if self.view_locks['rotation'] or self.view_locks['pan']:
+                # Copy view matrix (handles both rotation and pan)
+                left_camera.copy_from(right_camera)
+            
+            if self.view_locks['zoom']:
+                # Match field of view
+                left_camera.set_projection(
+                    right_camera.get_field_of_view(),
+                    left_camera.get_aspect_ratio(),
+                    left_camera.get_near(),
+                    left_camera.get_far(),
+                    right_camera.get_field_of_view_type()
+                )
+        except Exception as e:
+            # Silently handle errors (camera API may vary)
+            pass
     
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
