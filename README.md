@@ -18,31 +18,51 @@ pip install -r requirements.txt
 
 # Generate mesh (with automatic cleanup)
 cd scripts
-./mesher.py --input_file ../pclouds/chiller_rgb.ply --output_filename ../meshes/output.glb
+./mesher.py --input-path ../pclouds/chiller_rgb.ply --output-path ../meshes/output.glb
 
 # Launch interactive viewer
 ./viewer.py
 ```
 
+
+## Batch Processing
+
+Process entire directories of point clouds:
+
+```bash
+# Process all .ply files in a directory
+./mesher.py --input-path ../pclouds --output-dir ../meshes --output-format glb --meshing-method poisson --simplify 100000
+
+# Output: chiller_rgb_poisson.glb, chiller_shc_poisson.glb, etc.
+```
+
+## On-Demand Viewer Meshing
+
+The viewer automatically generates missing meshes:
+
+```bash
+./viewer.py  # Auto-generates meshes if not found
+```
+
 ## Mesher Usage
 
 ```
-usage: mesher.py [-h] --input_file INPUT_FILE --output_filename OUTPUT_FILENAME
+usage: mesher.py [-h] --input-path INPUT_PATH --output-path OUTPUT_PATH
                  [--output_format {obj,glb,stl,ply}]
-                 [--meshing_method {poisson,bpa,alpha}] [--no-cleanup]
+                 [--meshing-method {poisson,bpa,alpha}] [--no-cleanup]
                  [--simplify N] [--fill-holes SIZE]
 
 Generate 3D meshes from point clouds with automatic color detection
 
 options:
   -h, --help            show this help message and exit
-  --input_file INPUT_FILE
+  --input-path INPUT_PATH
                         Path to input PLY point cloud file
-  --output_filename OUTPUT_FILENAME
+  --output-path OUTPUT_PATH
                         Path for output mesh file
   --output_format {obj,glb,stl,ply}
                         Output file format (default: obj)
-  --meshing_method {poisson,bpa,alpha}
+  --meshing-method {poisson,bpa,alpha}
                         Meshing algorithm (default: poisson):
                         - poisson: Watertight meshes, best quality
                         - bpa: Preserves exact point positions
@@ -56,20 +76,20 @@ options:
 
 ```bash
 # Basic usage (with automatic cleanup)
-./mesher.py --input_file input.ply --output_filename output.glb
+./mesher.py --input-path input.ply --output-path output.glb
 
 # Simplified to 100K triangles
-./mesher.py --input_file input.ply --output_filename output.glb --simplify 100000
+./mesher.py --input-path input.ply --output-path output.glb --simplify 100000
 
 # BPA method with OBJ export
-./mesher.py --input_file input.ply --output_filename output.obj \
-            --output_format obj --meshing_method bpa
+./mesher.py --input-path input.ply --output-path output.obj \
+            --output_format obj --meshing-method bpa
 
 # Without cleanup (keep all geometry)
-./mesher.py --input_file input.ply --output_filename output.glb --no-cleanup
+./mesher.py --input-path input.ply --output-path output.glb --no-cleanup
 
 # With hole filling (requires trimesh)
-./mesher.py --input_file input.ply --output_filename output.glb --fill-holes 0.1
+./mesher.py --input-path input.ply --output-path output.glb --fill-holes 0.1
 ```
 
 ## Viewer Usage
@@ -79,7 +99,7 @@ options:
 ./viewer.py
 
 # Custom point cloud
-./viewer.py --input_file ../pclouds/your_file.ply --mesh_dir ../meshes
+./viewer.py --input-path ../pclouds/your_file.ply --mesh_dir ../meshes
 ```
 
 **Viewer Controls:**
