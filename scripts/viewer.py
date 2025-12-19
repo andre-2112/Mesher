@@ -476,10 +476,6 @@ class DualPaneMeshViewer:
         # self.panel.add_child(info_layout)
 
         # Export Mesh button
-        self.export_button = gui.Button("Export Mesh")
-        self.export_button.enabled = False
-        self.export_button.set_on_clicked(self._on_export_mesh)
-        self.panel.add_child(self.export_button)
         
         # Scene widgets (3D viewers)
         self.scene_widget_left = gui.SceneWidget()
