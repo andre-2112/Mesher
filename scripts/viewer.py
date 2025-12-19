@@ -310,8 +310,6 @@ class DualPaneMeshViewer:
         self.settings.add_fixed(0.5 * em)
         
         # UP Orientation
-        self.settings.add_child(gui.Label("UP Orientation"))
-        
         up_layout = gui.Horiz()
         up_layout.add_child(gui.Label("UP Axis:"))
         self.up_combo = gui.Combobox()
