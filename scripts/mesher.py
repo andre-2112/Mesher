@@ -190,7 +190,16 @@ def generate_mesh(pcd, method):
         raise ValueError(f"Unknown meshing method: {method}")
 
 
-def post_process_mesh(mesh, cleanup=True, simplify_target=None, fill_holes_size=None):
+def set_origin_to_bottom(mesh):
+    """Move mesh origin to bottom corner (min_bound) for better placement and 3D printing."""
+    bbox = mesh.get_axis_aligned_bounding_box()
+    translation = -bbox.min_bound
+    mesh.translate(translation)
+    print(f"  Moved origin to bottom corner (translated by {translation})")
+    return mesh
+
+
+def post_process_mesh(mesh, cleanup=True, simplify_target=None, fill_holes_size=None, origin_bottom=True):
     """Post-process mesh with cleanup, simplification, and hole filling."""
     original_triangles = len(mesh.triangles)
     
@@ -233,6 +242,9 @@ def post_process_mesh(mesh, cleanup=True, simplify_target=None, fill_holes_size=
             print("  Warning: trimesh not available for hole filling")
         except Exception as e:
             print(f"  Warning: hole filling failed: {e}")
+    
+    if origin_bottom:
+        mesh = set_origin_to_bottom(mesh)
     
     return mesh
 
@@ -355,6 +367,12 @@ Examples:
     )
     
     parser.add_argument(
+        "--no-origin-bottom",
+        action="store_true",
+        help="Disable moving origin to bottom corner (keeps origin at center)"
+    )
+    
+    parser.add_argument(
         "--meshing_method",
         type=str,
         default="poisson",
@@ -380,11 +398,13 @@ Examples:
     
         # Post-process mesh
         cleanup = not args.no_cleanup
+        origin_bottom = not args.no_origin_bottom
         mesh = post_process_mesh(
             mesh,
             cleanup=cleanup,
             simplify_target=args.simplify,
-            fill_holes_size=args.fill_holes
+            fill_holes_size=args.fill_holes,
+            origin_bottom=origin_bottom
         )
         
         # Validate mesh
