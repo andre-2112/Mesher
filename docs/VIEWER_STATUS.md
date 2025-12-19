@@ -35,7 +35,7 @@
 ./scripts/viewer.py
 
 # With specific file
-./scripts/viewer.py --input_file pclouds/chiller_shc.ply
+./scripts/viewer.py --input-path pclouds/chiller_shc.ply
 ```
 
 ## Current State

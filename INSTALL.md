@@ -33,13 +33,13 @@ python3 -c "import open3d; import trimesh; import plyfile; print('✓ All depend
 cd scripts
 
 # Generate watertight mesh (default: Poisson + GLB)
-./mesher.py --input_file ../pclouds/chiller_rgb.ply --output_filename ../meshes/output.glb
+./mesher.py --input-path ../pclouds/chiller_rgb.ply --output-path ../meshes/output.glb
 
 # Specify method and format
-./mesher.py --input_file ../pclouds/chiller_rgb.ply \
-            --output_filename ../meshes/output.obj \
+./mesher.py --input-path ../pclouds/chiller_rgb.ply \
+            --output-path ../meshes/output.obj \
             --output_format obj \
-            --meshing_method bpa
+            --meshing-method bpa
 ```
 
 ### Launch Viewer
@@ -51,7 +51,7 @@ cd scripts
 ./viewer.py
 
 # Specify custom file
-./viewer.py --input_file ../pclouds/your_file.ply
+./viewer.py --input-path ../pclouds/your_file.ply
 ```
 
 ## Features

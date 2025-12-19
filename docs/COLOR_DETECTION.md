@@ -59,8 +59,8 @@ Both BPA and Alpha methods successfully transfer colors to meshes.
 cd scripts
 
 # Works with either format automatically
-./mesher.py --input_file ../pclouds/chiller_shc.ply --output_filename ../meshes/output.obj --output_format obj --meshing_method bpa
-./mesher.py --input_file ../pclouds/chiller_rgb.ply --output_filename ../meshes/output.obj --output_format obj --meshing_method bpa
+./mesher.py --input-path ../pclouds/chiller_shc.ply --output-path ../meshes/output.obj --output_format obj --meshing-method bpa
+./mesher.py --input-path ../pclouds/chiller_rgb.ply --output-path ../meshes/output.obj --output_format obj --meshing-method bpa
 ```
 
 ### With Viewer
@@ -68,8 +68,8 @@ cd scripts
 cd scripts
 
 # Works with either format automatically
-./viewer.py --input_file ../pclouds/chiller_shc.ply
-./viewer.py --input_file ../pclouds/chiller_rgb.ply
+./viewer.py --input-path ../pclouds/chiller_shc.ply
+./viewer.py --input-path ../pclouds/chiller_rgb.ply
 ```
 
 Use the "Background Color" dropdown in the viewer to change the background.

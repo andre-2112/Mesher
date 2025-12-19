@@ -33,12 +33,12 @@ cd scripts
 
 ### Generate Colored Meshes
 ```bash
-./mesher.py --input_file ../pclouds/chiller_rgb.ply --output_filename ../meshes/chiller_bpa.obj --output_format obj --meshing_method bpa
+./mesher.py --input-path ../pclouds/chiller_rgb.ply --output-path ../meshes/chiller_bpa.obj --output_format obj --meshing-method bpa
 ```
 
 ### View with Colors
 ```bash
-./viewer.py --input_file ../pclouds/chiller_rgb.ply
+./viewer.py --input-path ../pclouds/chiller_rgb.ply
 ```
 
 ## Verification
