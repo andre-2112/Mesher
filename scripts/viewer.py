@@ -139,7 +139,7 @@ class DualPaneMeshViewer:
                     simplify_method="uniform",
                     adaptive_threshold=0.1,
                     fill_holes_size=None,
-                    origin_bottom=True,
+                    origin_bottom=False,
                     generate_tex=False,
                     uv_method="simple",
                     texture_size=2048
@@ -625,7 +625,7 @@ class DualPaneMeshViewer:
                 simplify_method=method,
                 adaptive_threshold=0.1,
                 fill_holes_size=None,
-                origin_bottom=True,
+                origin_bottom=False,
                 generate_tex=False,
                 uv_method="simple",
                 texture_size=2048
