@@ -198,6 +198,14 @@ class DualPaneMeshViewer:
             
             print(f"Loaded mesh: {mesh_filename} ({len(mesh.vertices)} vertices, {len(mesh.triangles)} triangles)")
             
+
+            # Center mesh to match point cloud
+            pc_center = self.point_cloud.get_axis_aligned_bounding_box().get_center()
+            mesh_center = mesh.get_axis_aligned_bounding_box().get_center()
+            offset = pc_center - mesh_center
+            mesh.translate(offset)
+            print(f"Centered mesh: offset = {offset}")
+            
             # Store original and current mesh
             import copy
             self.original_mesh = mesh
