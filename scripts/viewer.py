@@ -61,6 +61,8 @@ class DualPaneMeshViewer:
         self.show_bbox = False
         self.show_wireframe = False
         self.show_normals = False
+        self.show_rendering = True
+        self.mesh_origin_offset = None
         
         # Display options
         self.show_bbox = False
@@ -374,6 +376,15 @@ class DualPaneMeshViewer:
         self.normal_color_edit.color_value = gui.Color(1.0, 0.0, 0.0)  # Red
         normal_color_layout.add_child(self.normal_color_edit)
         self.settings.add_child(normal_color_layout)
+
+        self.rendering_cb = gui.Checkbox("Show Rendering")
+        self.rendering_cb.checked = True
+        self.rendering_cb.set_on_checked(self._on_rendering_changed)
+        self.settings.add_child(self.rendering_cb)
+
+        self.origin_button = gui.Button("Reset Mesh Origin")
+        self.origin_button.set_on_clicked(self._on_origin_reset)
+        self.settings.add_child(self.origin_button)
         
         self.settings.add_fixed(0.5 * em)
         
@@ -412,7 +423,7 @@ class DualPaneMeshViewer:
     def _on_layout(self, layout_context):
         """Handle window layout."""
         r = self.window.content_rect
-        panel_width = 400  # Increased from 250 (60% wider)
+        panel_width = 600  # Increased from 250 (60% wider)
         
         # Panel on the left
         self.panel.frame = gui.Rect(r.x, r.y, panel_width, r.height)
@@ -915,6 +926,40 @@ class DualPaneMeshViewer:
 
         print(f"Normals: {'ON' if checked else 'OFF'}")
 
+
+
+    def _on_rendering_changed(self, checked):
+        """Toggle mesh rendering (solid vs transparent)."""
+        self.show_rendering = checked
+        if self.current_mesh:
+            try:
+                self.scene_widget_right.scene.remove_geometry("mesh")
+            except:
+                pass
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultLit" if checked else "defaultUnlit"
+            if not checked:
+                mat.base_color = [1.0, 1.0, 1.0, 0.3]
+            self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
+        print(f"Rendering: {'ON' if checked else 'OFF'}")
+
+    def _on_origin_reset(self):
+        """Reset mesh origin to bottom-left corner."""
+        if self.current_mesh:
+            bounds = self.current_mesh.get_axis_aligned_bounding_box()
+            min_bound = bounds.get_min_bound()
+            offset = -min_bound
+            self.current_mesh.translate(offset)
+            self.mesh_origin_offset = offset
+            try:
+                self.scene_widget_right.scene.remove_geometry("mesh")
+            except:
+                pass
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultLit"
+            self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
+            self._update_dimension_display()
+            print(f"✓ Reset origin: offset = {offset}")
 
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
