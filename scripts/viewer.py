@@ -709,11 +709,11 @@ class DualPaneMeshViewer:
         else:
             # Remove bounding boxes
             try:
-            self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+                self.scene_widget_left.scene.remove_geometry("pcd_bbox")
             except:
                 pass
             try:
-            self.scene_widget_right.scene.remove_geometry("mesh_bbox")
+                self.scene_widget_right.scene.remove_geometry("mesh_bbox")
             except:
                 pass
         
@@ -725,7 +725,7 @@ class DualPaneMeshViewer:
         
         if self.current_mesh:
             try:
-            self.scene_widget_right.scene.remove_geometry("mesh")
+                self.scene_widget_right.scene.remove_geometry("mesh")
             except:
                 pass
             mat = rendering.MaterialRecord()
@@ -748,7 +748,7 @@ class DualPaneMeshViewer:
                 self.scene_widget_right.scene.add_geometry("wireframe", line_set, rendering.MaterialRecord())
             else:
                 try:
-                self.scene_widget_right.scene.remove_geometry("wireframe")
+                    self.scene_widget_right.scene.remove_geometry("wireframe")
                 except:
                     pass
             
@@ -807,11 +807,11 @@ class DualPaneMeshViewer:
         else:
             # Remove normals
             try:
-            self.scene_widget_left.scene.remove_geometry("pcd_normals")
+                self.scene_widget_left.scene.remove_geometry("pcd_normals")
             except:
                 pass
             try:
-            self.scene_widget_right.scene.remove_geometry("mesh_normals")
+                self.scene_widget_right.scene.remove_geometry("mesh_normals")
             except:
                 pass
         
@@ -832,11 +832,11 @@ class DualPaneMeshViewer:
                 self.scene_widget_right.scene.add_geometry("mesh_bbox", mesh_bbox, rendering.MaterialRecord())
         else:
             try:
-            self.scene_widget_left.scene.remove_geometry("pcd_bbox")
+                self.scene_widget_left.scene.remove_geometry("pcd_bbox")
             except:
                 pass
             try:
-            self.scene_widget_right.scene.remove_geometry("mesh_bbox")
+                self.scene_widget_right.scene.remove_geometry("mesh_bbox")
             except:
                 pass
 
@@ -848,7 +848,7 @@ class DualPaneMeshViewer:
 
         if self.current_mesh:
             try:
-            self.scene_widget_right.scene.remove_geometry("wireframe")
+                self.scene_widget_right.scene.remove_geometry("wireframe")
             except:
                 pass
             if checked:
@@ -916,11 +916,11 @@ class DualPaneMeshViewer:
                 self.scene_widget_right.scene.add_geometry("mesh_normals", mesh_line_set, rendering.MaterialRecord())
         else:
             try:
-            self.scene_widget_left.scene.remove_geometry("pcd_normals")
+                self.scene_widget_left.scene.remove_geometry("pcd_normals")
             except:
                 pass
             try:
-            self.scene_widget_right.scene.remove_geometry("mesh_normals")
+                self.scene_widget_right.scene.remove_geometry("mesh_normals")
             except:
                 pass
 
