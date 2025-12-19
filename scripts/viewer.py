@@ -1014,12 +1014,30 @@ class DualPaneMeshViewer:
         print(f"Rendering: {'ON' if checked else 'OFF'}")
 
 
-    def _on_origin_center(self):
-        """Set origin to center (0, 0, 0)."""
-        self.origin_x.text_value = "0.0"
-        self.origin_y.text_value = "0.0"
-        self.origin_z.text_value = "0.0"
-        print("Origin set to center: [0, 0, 0]")
+    def _on_origin_center(self, checked):
+        """Center mesh and update origin fields when checkbox is checked."""
+        if checked and self.current_mesh:
+            bounds = self.current_mesh.get_axis_aligned_bounding_box()
+            min_bound = bounds.get_min_bound()
+            max_bound = bounds.get_max_bound()
+            center = (min_bound + max_bound) / 2
+            offset = -center
+            self.current_mesh.translate(offset)
+            try:
+                self.scene_widget_right.scene.remove_geometry("mesh")
+            except:
+                pass
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultLit"
+            self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
+            self.origin_x.text_value = "0.0"
+            self.origin_y.text_value = "0.0"
+            self.origin_z.text_value = "0.0"
+            self._update_dimension_display()
+            print(f"✓ Mesh centered at origin [0, 0, 0]")
+        elif not checked:
+            print("Center unchecked")
+
 
     def _on_origin_apply(self):
         """Apply mesh origin offset."""
