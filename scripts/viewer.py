@@ -970,13 +970,13 @@ class DualPaneMeshViewer:
     def _on_origin_apply(self):
         """Apply mesh origin offset."""
         if self.current_mesh:
-            bounds = self.current_mesh.get_axis_aligned_bounding_box()
-            min_bound = bounds.get_min_bound()
-            offset = -min_bound
-            self.current_mesh.translate(offset)
-            self.mesh_origin_offset = offset
             try:
-                self.scene_widget_right.scene.remove_geometry("mesh")
+                x = float(self.origin_x.text_value)
+                y = float(self.origin_y.text_value)
+                z = float(self.origin_z.text_value)
+                bounds = self.current_mesh.get_axis_aligned_bounding_box()
+                min_bound = bounds.get_min_bound()
+                offset = [x - min_bound[0], y - min_bound[1], z - min_bound[2]]
             except:
                 pass
             mat = rendering.MaterialRecord()
