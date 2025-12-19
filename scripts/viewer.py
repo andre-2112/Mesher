@@ -573,7 +573,7 @@ class DualPaneMeshViewer:
             self.mesh_modified = True
             self.export_button.enabled = True
                 print(f"✓ Scaled to {value}x")
-        except ValueError:
+            except ValueError:
             print("Invalid scale value")
     
     
@@ -999,6 +999,7 @@ class DualPaneMeshViewer:
                 bounds = self.current_mesh.get_axis_aligned_bounding_box()
                 min_bound = bounds.get_min_bound()
                 offset = [x - min_bound[0], y - min_bound[1], z - min_bound[2]]
+                self.current_mesh.translate(offset)
             except:
                 pass
             mat = rendering.MaterialRecord()
