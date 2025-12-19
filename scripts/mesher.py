@@ -520,9 +520,11 @@ Examples:
     )
     
     parser.add_argument(
-        "--no-origin-bottom",
-        action="store_true",
-        help="Disable moving origin to bottom corner (keeps origin at center)"
+        "--origin",
+        type=str,
+        default="bottom",
+        choices=["bottom", "center"],
+        help="Origin position: bottom (min_bound at [0,0,0], default) or center (original position)"
     )
     
     parser.add_argument(
@@ -551,7 +553,7 @@ Examples:
     
         # Post-process mesh
         cleanup = not args.no_cleanup
-        origin_bottom = not args.no_origin_bottom
+        origin_bottom = (args.origin == "bottom")
         mesh, texture = post_process_mesh(
             mesh,
             pcd=pcd,
