@@ -351,7 +351,8 @@ class DualPaneMeshViewer:
         
         # View Synchronization
         self.settings.add_child(gui.Label("View Synchronization"))
-        self.settings.add_child(gui.Label("View Synchronization"))
+        # self.settings.add_child(gui.Label("View Synchronization"))
+        # Duplicate removed
         
         # Single row with Rotate, Pan, Zoom
         view_sync_layout = gui.Horiz()
@@ -561,7 +562,7 @@ class DualPaneMeshViewer:
         
         # Setup camera for right scene
         bounds = mesh.get_axis_aligned_bounding_box()
-        # self.scene_widget_right.setup_camera(60, bounds, self.point_cloud.get_axis_aligned_bounding_box().get_center())
+        self.scene_widget_right.setup_camera(60, bounds, self.point_cloud.get_axis_aligned_bounding_box().get_center())
         # Camera already set up in __init__, no need to re-center
     
     def _on_method_changed(self, new_value, new_index):
