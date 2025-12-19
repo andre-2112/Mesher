@@ -1,118 +1,173 @@
-# Automated Mesh Viewer
+# Open3D Mesher
 
-Interactive dual-pane viewer for point clouds and meshes with automated mesh generation.
+Production-ready mesh generation toolkit with automatic color detection, advanced post-processing, and interactive visualization.
+
+## Features
+
+- **Auto Color Detection**: Automatically handles Gaussian Splatting SH coefficients and RGB formats
+- **Watertight Meshes**: Poisson reconstruction with bounding box cropping (removes artifacts)
+- **Post-Processing**: Cleanup, simplification, and hole-filling options
+- **Interactive Viewer**: Dual-pane display with method/format switching and background color picker
+- **Multiple Formats**: Export to OBJ, GLB, STL, PLY
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Generate mesh (with automatic cleanup)
+cd scripts
+./mesher.py --input_file ../pclouds/chiller_rgb.ply --output_filename ../meshes/output.glb
+
+# Launch interactive viewer
+./viewer.py
+```
+
+## Mesher Usage
+
+```
+usage: mesher.py [-h] --input_file INPUT_FILE --output_filename OUTPUT_FILENAME
+                 [--output_format {obj,glb,stl,ply}]
+                 [--meshing_method {poisson,bpa,alpha}] [--no-cleanup]
+                 [--simplify N] [--fill-holes SIZE]
+
+Generate 3D meshes from point clouds with automatic color detection
+
+options:
+  -h, --help            show this help message and exit
+  --input_file INPUT_FILE
+                        Path to input PLY point cloud file
+  --output_filename OUTPUT_FILENAME
+                        Path for output mesh file
+  --output_format {obj,glb,stl,ply}
+                        Output file format (default: obj)
+  --meshing_method {poisson,bpa,alpha}
+                        Meshing algorithm (default: poisson):
+                        - poisson: Watertight meshes, best quality
+                        - bpa: Preserves exact point positions
+                        - alpha: Shrink-wrapped boundary
+  --no-cleanup          Disable automatic mesh cleanup
+  --simplify N          Simplify mesh to N triangles (reduces file size)
+  --fill-holes SIZE     Fill holes smaller than SIZE (experimental)
+```
+
+## Examples
+
+```bash
+# Basic usage (with automatic cleanup)
+./mesher.py --input_file input.ply --output_filename output.glb
+
+# Simplified to 100K triangles
+./mesher.py --input_file input.ply --output_filename output.glb --simplify 100000
+
+# BPA method with OBJ export
+./mesher.py --input_file input.ply --output_filename output.obj \
+            --output_format obj --meshing_method bpa
+
+# Without cleanup (keep all geometry)
+./mesher.py --input_file input.ply --output_filename output.glb --no-cleanup
+
+# With hole filling (requires trimesh)
+./mesher.py --input_file input.ply --output_filename output.glb --fill-holes 0.1
+```
+
+## Viewer Usage
+
+```bash
+# Default (uses chiller_rgb.ply)
+./viewer.py
+
+# Custom point cloud
+./viewer.py --input_file ../pclouds/your_file.ply --mesh_dir ../meshes
+```
+
+**Viewer Controls:**
+- **Left Pane**: Original point cloud
+- **Right Pane**: Generated mesh
+- **Method Dropdown**: Switch between Poisson/BPA/Alpha
+- **Format Dropdown**: Switch between OBJ/GLB/STL
+- **Background Dropdown**: Change background color (Ice/White/Gray/Dark/Black)
+- **Mouse**: Click and drag to rotate/orbit
+
+## Meshing Methods
+
+| Method | Triangles | Watertight | Best For |
+|--------|-----------|------------|----------|
+| **Poisson** | 100K (simplified) | Nearly | Smooth surfaces, 3D printing |
+| **BPA** | 65K | No | Preserving detail, fast processing |
+| **Alpha** | 100K (simplified) | No | Complex shapes, visualization |
+
+## Post-Processing
+
+### Cleanup (Default ON)
+Automatically removes:
+- Duplicate vertices
+- Degenerate triangles
+- Unreferenced vertices
+
+### Simplification
+Reduces triangle count using quadric decimation:
+```bash
+--simplify 50000  # Reduce to 50K triangles
+```
+
+### Hole Filling (Experimental)
+Attempts to fill small holes:
+```bash
+--fill-holes 0.1  # Fill holes smaller than 0.1 units
+```
+
+## Output Formats
+
+- **GLB**: Binary glTF (best for web/3D apps) - 1.7-2.0 MB
+- **OBJ**: Wavefront (widely supported, with colors) - 7-8 MB
+- **STL**: For 3D printing (no colors) - 3-5 MB
+- **PLY**: Point cloud format - Variable
+
+## Installation
+
+See [INSTALL.md](INSTALL.md) for detailed installation instructions.
+
+## Dependencies
+
+- open3d >= 0.19.0
+- numpy >= 1.20
+- trimesh >= 4.0 (for GLB export and hole filling)
+- plyfile >= 1.0 (for Gaussian Splatting support)
 
 ## Project Structure
 
 ```
 Open3D/
-├── scripts/          # Python scripts
-│   ├── mesher.py     # Core meshing functionality
-│   ├── test_all.py   # Automated mesh generation
-│   └── viewer.py     # Interactive dual-pane viewer
-├── pclouds/          # Point cloud files (.ply)
-├── meshes/           # Generated mesh files
-├── docs/             # Documentation and development notes
-└── README.md         # This file
+├── scripts/
+│   ├── mesher.py           # Mesh generation
+│   ├── viewer.py           # Interactive viewer
+│   ├── convert_sh_to_rgb.py # SH to RGB converter
+│   └── test_all.py         # Batch processing
+├── pclouds/                # Point cloud files
+├── meshes/                 # Generated meshes
+├── docs/                   # Documentation
+├── requirements.txt        # Python dependencies
+├── INSTALL.md             # Installation guide
+└── README.md              # This file
 ```
-
-## Features
-
-- **Automated Mesh Generation**: Execute all meshing commands with a single script
-- **Dual-Pane Viewer**: Side-by-side point cloud and mesh visualization
-- **Interactive Controls**: Dropdown menus to switch between meshing methods and export formats
-- **3D Navigation**: Full orbit/rotation controls for both views
-
-## Quick Start
-
-### 1. Generate All Meshes
-
-Run the automation script to generate all mesh combinations:
-
-```bash
-cd scripts
-./test_all.py
-```
-
-This will create 9 mesh files (3 methods × 3 formats) in the `meshes/` directory.
-
-### 2. Launch the Viewer
-
-Open the interactive dual-pane viewer:
-
-```bash
-cd scripts
-./viewer.py
-```
-
-## Usage
-
-### Automation Script
-
-```bash
-cd scripts
-./test_all.py
-```
-
-**What it does:**
-- Executes all meshing commands from Dev - 1.md
-- Generates meshes using 3 methods: Poisson, Ball Pivoting (BPA), Alpha Shapes
-- Exports in 3 formats: OBJ, GLB, STL
-- Saves all outputs to `../meshes/` directory with filenames based on input file (e.g., `chiller_bpa.obj`)
-- Provides progress feedback and summary
-
-### Mesh Viewer
-
-```bash
-cd scripts
-./viewer.py [OPTIONS]
-```
-
-**Options:**
-- `--input_file PATH` - Path to input PLY point cloud (default: ../pclouds/chiller.ply)
-- `--mesh_dir PATH` - Directory containing generated meshes (default: ../meshes)
-
-**Controls:**
-- **Left Pane**: Displays the original point cloud
-- **Right Pane**: Displays the selected mesh
-- **Meshing Method Dropdown**: Select between POISSON, BPA, or ALPHA
-- **Export Format Dropdown**: Select between OBJ, GLB, or STL
-- **Mouse**: Click and drag to rotate/orbit both views
-
-## Meshing Methods
-
-### Poisson Surface Reconstruction
-- Best for smooth, watertight meshes
-- Handles noisy data well
-- May fail with certain point cloud configurations
-
-### Ball Pivoting Algorithm (BPA)
-- Preserves exact positions of original points
-- Fast and reliable
-- Good for detailed surface reconstruction
-
-### Alpha Shapes
-- Creates "shrink-wrapped" boundary around points
-- Geometric approach
-- Good for complex shapes
-
-## Output Formats
-
-- **OBJ**: Wavefront OBJ - widely supported, human-readable
-- **GLB**: Binary glTF - optimized for web and 3D applications
-- **STL**: STereoLithography - standard for 3D printing
 
 ## Troubleshooting
 
-### Poisson Reconstruction Fails
-If Poisson reconstruction shows "Found bad data" error, this is due to point cloud data issues. The BPA and Alpha methods should still work correctly.
+### GLB files won't load
+Install trimesh: `pip install trimesh`
 
-### Mesh Not Found in Viewer
-Ensure you've run `./test_all.py` first to generate the mesh files.
+### Poisson shows warnings
+"Failed to close loop" warnings are normal - the mesh is still generated successfully.
 
-## Files
+### Mesh has holes
+Use Poisson method for best watertight results. For other methods, try `--fill-holes 0.1`.
 
-- `test_all.py` - Automated mesh generation script
-- `viewer.py` - Interactive dual-pane viewer
-- `mesher.py` - Core meshing functionality
-- `meshes/` - Output directory for generated meshes
+## License
+
+See repository for license information.
+
+## Repository
+
+https://github.com/andre-2112/Mesher
