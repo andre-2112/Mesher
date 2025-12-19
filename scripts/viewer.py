@@ -531,7 +531,7 @@ class DualPaneMeshViewer:
         
         # Setup camera for right scene
         bounds = mesh.get_axis_aligned_bounding_box()
-        self.scene_widget_right.setup_camera(60, bounds, bounds.get_center())
+        self.scene_widget_right.setup_camera(60, bounds, self.point_cloud.get_axis_aligned_bounding_box().get_center())
     
     def _on_method_changed(self, new_value, new_index):
         """Handle meshing method selection change."""
