@@ -53,9 +53,10 @@ class DualPaneMeshViewer:
         # Current selections (poisson now works and creates watertight meshes)
         self.current_method = "poisson"
         self.current_format = "glb"
-        
-        # Current mesh
+        self.original_mesh = None
+        self.scale_factor = 1.0
         self.current_mesh = None
+        self.view_locks = {'rotation': False, 'pan': False, 'zoom': False}
         
         # Initialize GUI
         self.app = gui.Application.instance
@@ -179,6 +180,15 @@ class DualPaneMeshViewer:
                 print(f"Warning: Mesh has no vertex colors")
             
             print(f"Loaded mesh: {mesh_filename} ({len(mesh.vertices)} vertices, {len(mesh.triangles)} triangles)")
+            
+            # Store original and current mesh
+            import copy
+            self.original_mesh = mesh
+            self.current_mesh = copy.deepcopy(mesh)
+            
+            # Update dimension display
+            self._update_dimension_display()
+            
             return mesh
             
         except Exception as e:
@@ -241,9 +251,74 @@ class DualPaneMeshViewer:
         
         self.panel.add_fixed(0.5 * em)
         
-        # Background color dropdown
-        bg_label = gui.Label("Background Color:")
-        self.panel.add_child(bg_label)
+        # Settings panel for mesh scaling and background color
+        self.settings = gui.Vert(0.5 * em, gui.Margins(0.5 * em))
+        self.panel.add_child(self.settings)
+        
+        # Mesh Scaling
+        self.settings.add_child(gui.Label("Mesh Scaling"))
+        
+        scale_layout = gui.Horiz()
+        scale_layout.add_child(gui.Label("Scale:"))
+        self.scale_slider = gui.Slider(gui.Slider.DOUBLE)
+        self.scale_slider.set_limits(0.1, 10.0)
+        self.scale_slider.double_value = 1.0
+        self.scale_slider.set_on_value_changed(self._on_scale_changed)
+        scale_layout.add_child(self.scale_slider)
+        self.scale_label = gui.Label("1.0x")
+        scale_layout.add_child(self.scale_label)
+        self.settings.add_child(scale_layout)
+        
+        self.dimension_label = gui.Label("Dimensions: --")
+        self.settings.add_child(self.dimension_label)
+        
+        self.settings.add_fixed(0.5 * em)
+        
+        # Remeshing
+        self.settings.add_child(gui.Label("Remeshing"))
+        
+        poly_layout = gui.Horiz()
+        poly_layout.add_child(gui.Label("Poly Count:"))
+        self.poly_count_input = gui.TextEdit()
+        self.poly_count_input.text_value = "100000"
+        poly_layout.add_child(self.poly_count_input)
+        self.settings.add_child(poly_layout)
+        
+        method_layout = gui.Horiz()
+        method_layout.add_child(gui.Label("Method:"))
+        self.simplify_method_combo = gui.Combobox()
+        self.simplify_method_combo.add_item("Uniform")
+        self.simplify_method_combo.add_item("Adaptive")
+        self.simplify_method_combo.selected_index = 0
+        method_layout.add_child(self.simplify_method_combo)
+        self.settings.add_child(method_layout)
+        
+        self.remesh_button = gui.Button("Remesh")
+        self.remesh_button.set_on_clicked(self._on_remesh_clicked)
+        self.settings.add_child(self.remesh_button)
+        
+        self.settings.add_fixed(0.5 * em)
+        
+        # View Synchronization
+        self.settings.add_child(gui.Label("View Synchronization"))
+        
+        self.lock_rotation_cb = gui.Checkbox("Lock Rotation")
+        self.lock_rotation_cb.set_on_checked(lambda checked: self._on_view_lock_changed('rotation', checked))
+        self.settings.add_child(self.lock_rotation_cb)
+        
+        self.lock_pan_cb = gui.Checkbox("Lock Pan")
+        self.lock_pan_cb.set_on_checked(lambda checked: self._on_view_lock_changed('pan', checked))
+        self.settings.add_child(self.lock_pan_cb)
+        
+        self.lock_zoom_cb = gui.Checkbox("Lock Zoom")
+        self.lock_zoom_cb.set_on_checked(lambda checked: self._on_view_lock_changed('zoom', checked))
+        self.settings.add_child(self.lock_zoom_cb)
+        
+        self.settings.add_fixed(0.5 * em)
+        
+        # Background color picker
+        self.settings.add_child(gui.Label("Background Color"))
+        self.bg_color_combo = gui.Combobox()
         
         self.bg_colors = {
             "Ice": [0.94, 0.97, 0.98, 1.0],
@@ -350,6 +425,113 @@ class DualPaneMeshViewer:
         self.current_format = self.formats[new_index]
         print(f"Format changed to: {self.current_format}")
         self._update_mesh()
+    
+    
+    def _on_scale_changed(self, value):
+        """Handle mesh scaling slider change."""
+        self.scale_factor = value
+        self.scale_label.text = f"{value:.2f}x"
+        
+        if self.original_mesh is not None:
+            # Scale from original mesh
+            import copy
+            self.current_mesh = copy.deepcopy(self.original_mesh)
+            self.current_mesh.scale(value, center=self.current_mesh.get_center())
+            
+            # Update mesh display
+            self.mesh_widget.scene.clear_geometry()
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultLit"
+            self.mesh_widget.scene.add_geometry("mesh", self.current_mesh, mat)
+            
+            # Update dimensions
+            self._update_dimension_display()
+    
+    def _update_dimension_display(self):
+        """Update dimension label with current mesh bounds."""
+        if self.current_mesh is not None:
+            bounds = self.current_mesh.get_axis_aligned_bounding_box()
+            extent = bounds.get_extent()
+            self.dimension_label.text = f"Dimensions: {extent[0]:.3f} × {extent[1]:.3f} × {extent[2]:.3f}"
+        else:
+            self.dimension_label.text = "Dimensions: --"
+    
+    def _on_remesh_clicked(self):
+        """Handle remesh button click."""
+        if self.current_mesh is None:
+            print("No mesh loaded to remesh")
+            return
+        
+        try:
+            # Get parameters
+            target_count = int(self.poly_count_input.text_value)
+            method = self.simplify_method_combo.selected_text.lower()
+            
+            print(f"Remeshing to {target_count} triangles using {method} method...")
+            
+            # Import mesher functions
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent))
+            from mesher import post_process_mesh
+            
+            # Remesh (use original mesh as base)
+            mesh_to_process = self.original_mesh if self.original_mesh else self.current_mesh
+            
+            mesh, _ = post_process_mesh(
+                mesh_to_process,
+                pcd=self.point_cloud,
+                cleanup=True,
+                simplify_target=target_count,
+                simplify_method=method,
+                adaptive_threshold=0.1,
+                fill_holes_size=None,
+                origin_bottom=True,
+                generate_tex=False,
+                uv_method="simple",
+                texture_size=2048
+            )
+            
+            # Update meshes
+            self.original_mesh = mesh
+            import copy
+            self.current_mesh = copy.deepcopy(mesh)
+            
+            # Apply current scale
+            if self.scale_factor != 1.0:
+                self.current_mesh.scale(self.scale_factor, center=self.current_mesh.get_center())
+            
+            # Update display
+            self.scene_widget_right.scene.clear_geometry()
+            mat = rendering.MaterialRecord()
+            mat.shader = "defaultLit"
+            self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
+            
+            # Update info
+            self.info_label.text = (f"Method: {self.current_method.upper()}\n"
+                                   f"Format: {self.current_format.upper()}\n"
+                                   f"Vertices: {len(mesh.vertices):,}\n"
+                                   f"Triangles: {len(mesh.triangles):,}")
+            
+            # Update dimensions
+            self._update_dimension_display()
+            
+            print(f"✓ Remeshed: {len(mesh.vertices)} vertices, {len(mesh.triangles)} triangles")
+            
+        except Exception as e:
+            print(f"✗ Remeshing failed: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _on_view_lock_changed(self, lock_type, checked):
+        """Handle view lock checkbox changes."""
+        self.view_locks[lock_type] = checked
+        print(f"View lock {lock_type}: {'ON' if checked else 'OFF'}")
+        
+        # Note: Full camera synchronization requires access to camera matrices
+        # which may be limited in Open3D's GUI. This is a placeholder for
+        # the synchronization logic that would copy camera state between views.
+        if checked:
+            print(f"  (Camera sync for {lock_type} - requires manual implementation)")
     
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
