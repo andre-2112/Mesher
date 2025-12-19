@@ -520,30 +520,20 @@ class DualPaneMeshViewer:
         except ValueError:
             print("Invalid scale value")
     
+    
     def _on_up_changed(self, new_val, new_idx):
         """Handle UP orientation change."""
         self.up_direction = "Y" if new_idx == 0 else "Z"
         print(f"UP orientation: {self.up_direction}-up")
         
-        # Update camera up vector for both scenes
-        up_vector = [0, 1, 0] if self.up_direction == "Y" else [0, 0, 1]
+        # Reconfigure cameras with new up vector
+        # Note: Open3D's camera doesn't have set_up_vector, 
+        # so we need to reset the camera with the new up direction
+        # This is a limitation of the current Open3D API
         
-        # Update left scene camera
-        self.scene_widget_left.scene.camera.set_up_vector(up_vector)
-        self.scene_widget_left.scene.camera.look_at(
-            self.scene_widget_left.scene.camera.get_view_matrix()[:3, 3],
-            self.scene_widget_left.scene.camera.get_view_matrix()[:3, 3] + [0, 0, -1],
-            up_vector
-        )
-        
-        # Update right scene camera
-        if self.current_mesh:
-            self.scene_widget_right.scene.camera.set_up_vector(up_vector)
-            self.scene_widget_right.scene.camera.look_at(
-                self.scene_widget_right.scene.camera.get_view_matrix()[:3, 3],
-                self.scene_widget_right.scene.camera.get_view_matrix()[:3, 3] + [0, 0, -1],
-                up_vector
-            )
+        # For now, just log the change
+        # Full implementation would require recreating the scene
+        print(f"  (Camera up vector change requires scene reset - not implemented)")
     
     def _update_dimension_display(self):
         """Update dimension label with current mesh bounds."""
