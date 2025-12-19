@@ -62,6 +62,7 @@ class DualPaneMeshViewer:
         self.show_wireframe = False
         self.show_normals = False
         self.show_axes = True
+        self.mesh_modified = False
         self.invert_normals = False
         self.show_rendering = True
         self.mesh_origin_offset = None
@@ -448,6 +449,12 @@ class DualPaneMeshViewer:
         self.triangles_label = gui.Label("Triangles: --")
         info_layout.add_child(self.triangles_label)
         self.panel.add_child(info_layout)
+
+        # Export Mesh button
+        self.export_button = gui.Button("Export Mesh")
+        self.export_button.enabled = False
+        self.export_button.set_on_clicked(self._on_export_mesh)
+        self.panel.add_child(self.export_button)
         
         # Scene widgets (3D viewers)
         self.scene_widget_left = gui.SceneWidget()
@@ -563,6 +570,8 @@ class DualPaneMeshViewer:
                 
                 # Update dimensions
                 self._update_dimension_display()
+            self.mesh_modified = True
+            self.export_button.enabled = True
                 print(f"✓ Scaled to {value}x")
         except ValueError:
             print("Invalid scale value")
@@ -650,6 +659,8 @@ class DualPaneMeshViewer:
             self._update_dimension_display()
             
             print(f"✓ Remeshed: {len(mesh.vertices)} vertices, {len(mesh.triangles)} triangles")
+            self.mesh_modified = True
+            self.export_button.enabled = True
             
         except Exception as e:
             print(f"✗ Remeshing failed: {e}")
@@ -1004,6 +1015,23 @@ class DualPaneMeshViewer:
             self._on_normals_changed(True)
         print(f"Invert normals: {'ON' if checked else 'OFF'}")
 
+
+
+    def _on_export_mesh(self):
+        """Export modified mesh."""
+        if self.current_mesh:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".glb",
+                filetypes=[("GLB files", "*.glb"), ("OBJ files", "*.obj"), ("STL files", "*.stl")]
+            )
+            if filename:
+                import open3d as o3d
+                o3d.io.write_triangle_mesh(filename, self.current_mesh)
+                print(f"✓ Exported mesh to {filename}")
 
     def _on_axes_changed(self, checked):
         """Toggle axes display."""
