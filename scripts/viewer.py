@@ -262,28 +262,30 @@ class DualPaneMeshViewer:
         self.panel.add_child(title)
         
         # Method dropdown
-        method_label = gui.Label("Meshing Method:")
-        self.panel.add_child(method_label)
-        
+        # Method dropdown (horizontal)
+        method_layout = gui.Horiz()
+        method_layout.add_child(gui.Label("Meshing Method:"))
         self.method_dropdown = gui.Combobox()
         for method in self.methods:
             self.method_dropdown.add_item(method.upper())
-        self.method_dropdown.selected_index = 0  # Poisson (creates watertight meshes)
+        self.method_dropdown.selected_index = 0
         self.method_dropdown.set_on_selection_changed(self._on_method_changed)
-        self.panel.add_child(self.method_dropdown)
+        method_layout.add_child(self.method_dropdown)
+        self.panel.add_child(method_layout)
         
         self.panel.add_fixed(0.5 * em)
         
         # Format dropdown
-        format_label = gui.Label("Export Format:")
-        self.panel.add_child(format_label)
-        
+        # Format dropdown (horizontal)
+        format_layout = gui.Horiz()
+        format_layout.add_child(gui.Label("Export Format:"))
         self.format_dropdown = gui.Combobox()
         for fmt in self.formats:
             self.format_dropdown.add_item(fmt.upper())
-        self.format_dropdown.selected_index = 1  # GLB
+        self.format_dropdown.selected_index = 0
         self.format_dropdown.set_on_selection_changed(self._on_format_changed)
-        self.panel.add_child(self.format_dropdown)
+        format_layout.add_child(self.format_dropdown)
+        self.panel.add_child(format_layout)
         
         self.panel.add_fixed(0.5 * em)
         
