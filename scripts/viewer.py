@@ -572,7 +572,7 @@ class DualPaneMeshViewer:
                 self._update_dimension_display()
             self.mesh_modified = True
             self.export_button.enabled = True
-                print(f"✓ Scaled to {value}x")
+            print(f"✓ Scaled to {value}x")
             except ValueError:
             print("Invalid scale value")
     
