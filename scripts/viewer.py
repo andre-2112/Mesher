@@ -427,15 +427,27 @@ class DualPaneMeshViewer:
         self.bg_dropdown = gui.Combobox()
         for color_name in self.bg_colors.keys():
             self.bg_dropdown.add_item(color_name)
-        self.bg_dropdown.selected_index = 0
+        self.bg_dropdown.selected_index = 3
         self.bg_dropdown.set_on_selection_changed(self._on_bg_color_changed)
         self.panel.add_child(self.bg_dropdown)
         
         self.panel.add_fixed(0.5 * em)
         
         # Info labels
-        self.info_label = gui.Label("")
-        self.panel.add_child(self.info_label)
+        # Info display (single row at bottom)
+        info_layout = gui.Horiz()
+        self.method_label = gui.Label("Method: --")
+        info_layout.add_child(self.method_label)
+        info_layout.add_child(gui.Label("  "))
+        self.format_label = gui.Label("Format: --")
+        info_layout.add_child(self.format_label)
+        info_layout.add_child(gui.Label("  "))
+        self.vertices_label = gui.Label("Vertices: --")
+        info_layout.add_child(self.vertices_label)
+        info_layout.add_child(gui.Label("  "))
+        self.triangles_label = gui.Label("Triangles: --")
+        info_layout.add_child(self.triangles_label)
+        self.panel.add_child(info_layout)
         
         # Scene widgets (3D viewers)
         self.scene_widget_left = gui.SceneWidget()
@@ -501,8 +513,10 @@ class DualPaneMeshViewer:
         self.current_mesh = mesh
         
         # Update info
-        self.info_label.text = (f"Method: {self.current_method.upper()}\n"
-                               f"Format: {self.current_format.upper()}\n"
+        self.method_label.text = f"Method: {self.current_method.upper()}"
+            self.format_label.text = f"Format: {self.current_format.upper()}"
+            self.vertices_label.text = f"Vertices: {len(mesh.vertices):,}"
+            self.triangles_label.text = f"Triangles: {len(mesh.triangles):,}"}\n"
                                f"Vertices: {len(mesh.vertices):,}\n"
                                f"Triangles: {len(mesh.triangles):,}")
         
@@ -630,8 +644,10 @@ class DualPaneMeshViewer:
             self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
             
             # Update info
-            self.info_label.text = (f"Method: {self.current_method.upper()}\n"
-                                   f"Format: {self.current_format.upper()}\n"
+            self.method_label.text = f"Method: {self.current_method.upper()}"
+            self.format_label.text = f"Format: {self.current_format.upper()}"
+            self.vertices_label.text = f"Vertices: {len(mesh.vertices):,}"
+            self.triangles_label.text = f"Triangles: {len(mesh.triangles):,}"}\n"
                                    f"Vertices: {len(mesh.vertices):,}\n"
                                    f"Triangles: {len(mesh.triangles):,}")
             
