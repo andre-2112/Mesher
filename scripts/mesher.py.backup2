@@ -364,6 +364,56 @@ def post_process_mesh(mesh, pcd=None, cleanup=True, simplify_target=None, simpli
     return mesh, texture
 
 
+def save_mesh(mesh, output_filename, output_format, texture=None):
+    """Post-process mesh with cleanup, simplification, and hole filling."""
+    original_triangles = len(mesh.triangles)
+    
+    if cleanup:
+        print("Performing mesh cleanup...")
+        # Remove duplicates and degenerate geometry
+        mesh.remove_duplicated_vertices()
+        mesh.remove_duplicated_triangles()
+        mesh.remove_degenerate_triangles()
+        mesh.remove_unreferenced_vertices()
+        print(f"  Removed duplicates/degenerates: {original_triangles - len(mesh.triangles)} triangles")
+    
+    if simplify_target and simplify_target > 0:
+        print(f"Simplifying mesh to {simplify_target} triangles...")
+        if len(mesh.triangles) > simplify_target:
+            mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=simplify_target)
+            print(f"  Simplified: {original_triangles} → {len(mesh.triangles)} triangles")
+        else:
+            print(f"  Mesh already has fewer triangles ({len(mesh.triangles)}) than target")
+    
+    if fill_holes_size and fill_holes_size > 0:
+        print(f"Attempting to fill holes smaller than {fill_holes_size}...")
+        # Note: Open3D doesn't have built-in hole filling
+        # This would require trimesh or other libraries
+        try:
+            import trimesh
+            # Convert to trimesh for hole filling
+            vertices = np.asarray(mesh.vertices)
+            faces = np.asarray(mesh.triangles)
+            tmesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            
+            # Fill holes
+            tmesh.fill_holes()
+            
+            # Convert back
+            mesh.vertices = o3d.utility.Vector3dVector(tmesh.vertices)
+            mesh.triangles = o3d.utility.Vector3iVector(tmesh.faces)
+            print(f"  Filled holes: now {len(mesh.triangles)} triangles")
+        except ImportError:
+            print("  Warning: trimesh not available for hole filling")
+        except Exception as e:
+            print(f"  Warning: hole filling failed: {e}")
+    
+    if origin_bottom:
+        mesh = set_origin_to_bottom(mesh)
+    
+    return mesh
+
+
 def save_mesh(mesh, output_filename, output_format):
     """Save the mesh to a file in the specified format."""
     # Determine the actual output path
@@ -482,44 +532,6 @@ Examples:
     )
     
     parser.add_argument(
-        "--simplify-method",
-        type=str,
-        default="uniform",
-        choices=["uniform", "adaptive"],
-        help="Simplification method: uniform (standard) or adaptive (preserves detail in high-curvature areas)"
-    )
-    
-    parser.add_argument(
-        "--adaptive-threshold",
-        type=float,
-        default=0.1,
-        metavar="T",
-        help="Curvature threshold for adaptive simplification (default: 0.1, higher = more preservation)"
-    )
-    
-    parser.add_argument(
-        "--generate-texture",
-        action="store_true",
-        help="Generate texture map from vertex colors"
-    )
-    
-    parser.add_argument(
-        "--uv-method",
-        type=str,
-        default="simple",
-        choices=["simple", "smart"],
-        help="UV mapping method: simple (box projection, fast) or smart (unwrap, better quality)"
-    )
-    
-    parser.add_argument(
-        "--texture-size",
-        type=int,
-        default=2048,
-        metavar="SIZE",
-        help="Texture resolution (default: 2048x2048)"
-    )
-    
-    parser.add_argument(
         "--no-origin-bottom",
         action="store_true",
         help="Disable moving origin to bottom corner (keeps origin at center)"
@@ -552,18 +564,12 @@ Examples:
         # Post-process mesh
         cleanup = not args.no_cleanup
         origin_bottom = not args.no_origin_bottom
-        mesh, texture = post_process_mesh(
+        mesh = post_process_mesh(
             mesh,
-            pcd=pcd,
             cleanup=cleanup,
             simplify_target=args.simplify,
-            simplify_method=args.simplify_method,
-            adaptive_threshold=args.adaptive_threshold,
             fill_holes_size=args.fill_holes,
-            origin_bottom=origin_bottom,
-            generate_tex=args.generate_texture,
-            uv_method=args.uv_method,
-            texture_size=args.texture_size
+            origin_bottom=origin_bottom
         )
         
         # Validate mesh
