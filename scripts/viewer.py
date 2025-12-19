@@ -547,7 +547,7 @@ class DualPaneMeshViewer:
     
     
     def _on_scale_apply(self):
-        """Handle scale apply button click."""
+        """Apply scale to mesh."""
         try:
             value = float(self.scale_input.text_value)
             if value <= 0:
@@ -557,26 +557,21 @@ class DualPaneMeshViewer:
             self.scale_factor = value
             
             if self.original_mesh is not None:
-                # Scale from original mesh
                 import copy
                 self.current_mesh = copy.deepcopy(self.original_mesh)
                 self.current_mesh.scale(value, center=self.current_mesh.get_center())
                 
-                # Update mesh display
                 self.scene_widget_right.scene.clear_geometry()
                 mat = rendering.MaterialRecord()
                 mat.shader = "defaultLit"
                 self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
                 
-                # Update dimensions
                 self._update_dimension_display()
-            self.mesh_modified = True
-            self.export_button.enabled = True
-            print(f"✓ Scaled to {value}x")
+                self.mesh_modified = True
+                self.export_button.enabled = True
                 print(f"✓ Scaled to {value}x")
-            except ValueError:
+        except ValueError:
             print("Invalid scale value")
-    
     
     def _on_up_changed(self, new_val, new_idx):
         """Handle UP orientation change."""
