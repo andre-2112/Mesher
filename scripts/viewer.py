@@ -961,8 +961,8 @@ class DualPaneMeshViewer:
             self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
         print(f"Rendering: {'ON' if checked else 'OFF'}")
 
-    def _on_origin_reset(self):
-        """Reset mesh origin to bottom-left corner."""
+    def _on_origin_apply(self):
+        """Apply mesh origin offset."""
         if self.current_mesh:
             bounds = self.current_mesh.get_axis_aligned_bounding_box()
             min_bound = bounds.get_min_bound()
