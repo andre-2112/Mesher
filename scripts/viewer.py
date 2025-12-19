@@ -419,6 +419,9 @@ class DualPaneMeshViewer:
         origin_layout.add_child(self.origin_z)
         self.origin_apply = gui.Button("Apply")
         self.origin_apply.set_on_clicked(self._on_origin_apply)
+        self.origin_center = gui.Button("Center")
+        self.origin_center.set_on_clicked(self._on_origin_center)
+        origin_layout.add_child(self.origin_center)
         origin_layout.add_child(self.origin_apply)
         self.settings.add_child(origin_layout)
         
@@ -494,7 +497,7 @@ class DualPaneMeshViewer:
 
         # Info overlay at bottom
         info_height = 30
-        self.info_overlay.frame = gui.Rect(panel_width, r.height - info_height, r.width - panel_width, info_height)
+        self.info_overlay.frame = gui.Rect(r.width - 600, r.height - info_height, 600, info_height)
     
     def _setup_scenes(self):
         """Setup the 3D scenes for point cloud and mesh."""
@@ -1000,6 +1003,14 @@ class DualPaneMeshViewer:
                 mat.base_color = [1.0, 1.0, 1.0, 0.3]
             self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
         print(f"Rendering: {'ON' if checked else 'OFF'}")
+
+
+    def _on_origin_center(self):
+        """Set origin to center (0, 0, 0)."""
+        self.origin_x.text_value = "0.0"
+        self.origin_y.text_value = "0.0"
+        self.origin_z.text_value = "0.0"
+        print("Origin set to center: [0, 0, 0]")
 
     def _on_origin_apply(self):
         """Apply mesh origin offset."""
