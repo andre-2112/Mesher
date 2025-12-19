@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large mesh files (optional - comment out if you want to include them)
+# meshes/*.obj
+# meshes/*.glb
+# meshes/*.stl
+
+# Point clouds (optional - comment out if you want to include them)
+# pclouds/*.ply
