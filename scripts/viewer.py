@@ -343,25 +343,28 @@ class DualPaneMeshViewer:
         
         # View Synchronization
         self.settings.add_child(gui.Label("View Synchronization"))
+        self.settings.add_child(gui.Label("View Synchronization"))
         
-        self.lock_rotation_cb = gui.Checkbox("Lock Rotation")
-        self.lock_rotation_cb.checked = True  # Default ON
+        # Single row with Rotate, Pan, Zoom
+        view_sync_layout = gui.Horiz()
+        self.lock_rotation_cb = gui.Checkbox("Rotate")
+        self.lock_rotation_cb.checked = True
         self.lock_rotation_cb.set_on_checked(lambda checked: self._on_view_lock_changed('rotation', checked))
-        self.settings.add_child(self.lock_rotation_cb)
-        
-        self.lock_pan_cb = gui.Checkbox("Lock Pan")
-        self.lock_pan_cb.checked = True  # Default ON
+        view_sync_layout.add_child(self.lock_rotation_cb)
+        view_sync_layout.add_child(gui.Label("  "))
+        self.lock_pan_cb = gui.Checkbox("Pan")
+        self.lock_pan_cb.checked = True
         self.lock_pan_cb.set_on_checked(lambda checked: self._on_view_lock_changed('pan', checked))
-        self.settings.add_child(self.lock_pan_cb)
-        
-        self.lock_zoom_cb = gui.Checkbox("Lock Zoom")
-        self.lock_zoom_cb.checked = True  # Default ON
+        view_sync_layout.add_child(self.lock_pan_cb)
+        view_sync_layout.add_child(gui.Label("  "))
+        self.lock_zoom_cb = gui.Checkbox("Zoom")
+        self.lock_zoom_cb.checked = True
         self.lock_zoom_cb.set_on_checked(lambda checked: self._on_view_lock_changed('zoom', checked))
-        self.settings.add_child(self.lock_zoom_cb)
+        view_sync_layout.add_child(self.lock_zoom_cb)
+        self.settings.add_child(view_sync_layout)
         
         self.settings.add_fixed(0.5 * em)
         
-        # Display Options
         self.settings.add_child(gui.Label("Display"))
         
         self.axes_cb = gui.Checkbox("Show Axes")
