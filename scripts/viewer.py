@@ -979,6 +979,14 @@ class DualPaneMeshViewer:
             self._update_dimension_display()
             print(f"✓ Reset origin: offset = {offset}")
 
+    def _on_invert_normals_changed(self, checked):
+        """Toggle normal inversion."""
+        self.invert_normals = checked
+        if self.show_normals:
+            self._on_normals_changed(False)
+            self._on_normals_changed(True)
+        print(f"Invert normals: {'ON' if checked else 'OFF'}")
+
     def _on_bg_color_changed(self, new_value, new_index):
         """Handle background color selection change."""
         color_name = list(self.bg_colors.keys())[new_index]
