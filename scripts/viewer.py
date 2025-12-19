@@ -57,6 +57,7 @@ class DualPaneMeshViewer:
         self.scale_factor = 1.0
         self.current_mesh = None
         self.view_locks = {'rotation': False, 'pan': False, 'zoom': False}
+        self.up_direction = "Z"  # Default to Z-up
         
         # Initialize GUI
         self.app = gui.Application.instance
@@ -260,17 +261,31 @@ class DualPaneMeshViewer:
         
         scale_layout = gui.Horiz()
         scale_layout.add_child(gui.Label("Scale:"))
-        self.scale_slider = gui.Slider(gui.Slider.DOUBLE)
-        self.scale_slider.set_limits(0.1, 10.0)
-        self.scale_slider.double_value = 1.0
-        self.scale_slider.set_on_value_changed(self._on_scale_changed)
-        scale_layout.add_child(self.scale_slider)
-        self.scale_label = gui.Label("1.0x")
-        scale_layout.add_child(self.scale_label)
+        self.scale_input = gui.TextEdit()
+        self.scale_input.text_value = "1.0"
+        scale_layout.add_child(self.scale_input)
+        self.scale_apply_button = gui.Button("Apply")
+        self.scale_apply_button.set_on_clicked(self._on_scale_apply)
+        scale_layout.add_child(self.scale_apply_button)
         self.settings.add_child(scale_layout)
         
         self.dimension_label = gui.Label("Dimensions: --")
         self.settings.add_child(self.dimension_label)
+        
+        self.settings.add_fixed(0.5 * em)
+        
+        # UP Orientation
+        self.settings.add_child(gui.Label("UP Orientation"))
+        
+        up_layout = gui.Horiz()
+        up_layout.add_child(gui.Label("UP Axis:"))
+        self.up_combo = gui.Combobox()
+        self.up_combo.add_item("Y-up")
+        self.up_combo.add_item("Z-up")
+        self.up_combo.selected_index = 1  # Z-up default
+        self.up_combo.set_on_selection_changed(self._on_up_changed)
+        up_layout.add_child(self.up_combo)
+        self.settings.add_child(up_layout)
         
         self.settings.add_fixed(0.5 * em)
         
@@ -431,25 +446,58 @@ class DualPaneMeshViewer:
         self._update_mesh()
     
     
-    def _on_scale_changed(self, value):
-        """Handle mesh scaling slider change."""
-        self.scale_factor = value
-        self.scale_label.text = f"{value:.2f}x"
+    def _on_scale_apply(self):
+        """Handle scale apply button click."""
+        try:
+            value = float(self.scale_input.text_value)
+            if value <= 0:
+                print("Scale must be positive")
+                return
+            
+            self.scale_factor = value
+            
+            if self.original_mesh is not None:
+                # Scale from original mesh
+                import copy
+                self.current_mesh = copy.deepcopy(self.original_mesh)
+                self.current_mesh.scale(value, center=self.current_mesh.get_center())
+                
+                # Update mesh display
+                self.scene_widget_right.scene.clear_geometry()
+                mat = rendering.MaterialRecord()
+                mat.shader = "defaultLit"
+                self.scene_widget_right.scene.add_geometry("mesh", self.current_mesh, mat)
+                
+                # Update dimensions
+                self._update_dimension_display()
+                print(f"✓ Scaled to {value}x")
+        except ValueError:
+            print("Invalid scale value")
+    
+    def _on_up_changed(self, new_val, new_idx):
+        """Handle UP orientation change."""
+        self.up_direction = "Y" if new_idx == 0 else "Z"
+        print(f"UP orientation: {self.up_direction}-up")
         
-        if self.original_mesh is not None:
-            # Scale from original mesh
-            import copy
-            self.current_mesh = copy.deepcopy(self.original_mesh)
-            self.current_mesh.scale(value, center=self.current_mesh.get_center())
-            
-            # Update mesh display
-            self.mesh_widget.scene.clear_geometry()
-            mat = rendering.MaterialRecord()
-            mat.shader = "defaultLit"
-            self.mesh_widget.scene.add_geometry("mesh", self.current_mesh, mat)
-            
-            # Update dimensions
-            self._update_dimension_display()
+        # Update camera up vector for both scenes
+        up_vector = [0, 1, 0] if self.up_direction == "Y" else [0, 0, 1]
+        
+        # Update left scene camera
+        self.scene_widget_left.scene.camera.set_up_vector(up_vector)
+        self.scene_widget_left.scene.camera.look_at(
+            self.scene_widget_left.scene.camera.get_view_matrix()[:3, 3],
+            self.scene_widget_left.scene.camera.get_view_matrix()[:3, 3] + [0, 0, -1],
+            up_vector
+        )
+        
+        # Update right scene camera
+        if self.current_mesh:
+            self.scene_widget_right.scene.camera.set_up_vector(up_vector)
+            self.scene_widget_right.scene.camera.look_at(
+                self.scene_widget_right.scene.camera.get_view_matrix()[:3, 3],
+                self.scene_widget_right.scene.camera.get_view_matrix()[:3, 3] + [0, 0, -1],
+                up_vector
+            )
     
     def _update_dimension_display(self):
         """Update dimension label with current mesh bounds."""
