@@ -2,6 +2,8 @@
 
 Production-ready mesh generation toolkit with automatic color detection, advanced post-processing, and interactive visualization.
 
+![Open3D Mesher Interface](Mesher.png)
+
 ## Features
 
 - **Auto Color Detection**: Automatically handles Gaussian Splatting SH coefficients and RGB formats
